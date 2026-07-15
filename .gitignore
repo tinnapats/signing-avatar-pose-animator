@@ -1,0 +1,21 @@
+# Private/local dataset (never publish)
+SLclean/
+
+# Python environments and generated files
+.venv/
+.venv.python310-broken/
+__pycache__/
+*.py[cod]
+
+# Local speech-recognition model and downloaded archive
+vosk-model-small-en-us-0.15/
+vosk-model-small-en-us-0.15.zip
+
+# Editor settings and temporary files
+.vscode/
+*.bak
+.pose-animator-git-backup/
+
+# Generated animation data
+pose-animator/resources/data/my_sequence.json
+pose-animator/resources/data/_tmp_*.json
