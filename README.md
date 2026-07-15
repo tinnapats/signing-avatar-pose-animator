@@ -1,69 +1,69 @@
 # Signing Avatar / Pose Animator
 
-A local web application for turning text or CSV pose data into an animated signing avatar. It combines the browser-based [Pose Animator](https://github.com/yemount/pose-animator) player with a small Python server that generates animation sequences from a local dataset.
+เว็บแอปสำหรับแปลงข้อความหรือข้อมูลท่าทางจากไฟล์ CSV ให้เป็นอวตารภาษามือแบบเคลื่อนไหวบนเครื่องของคุณ โดยใช้ตัวเล่น [Pose Animator](https://github.com/yemount/pose-animator) ร่วมกับ Python server ขนาดเล็กสำหรับสร้างลำดับการเคลื่อนไหวจากชุดข้อมูลในเครื่อง
 
-> **Privacy:** the `SLclean/` dataset is deliberately excluded from this repository. Add your own CSV dataset locally before using text-to-animation generation.
+> **ความเป็นส่วนตัว:** โฟลเดอร์ชุดข้อมูล `SLclean/` ถูกตั้งใจไม่ให้อัปโหลดขึ้น repository นี้ ผู้ใช้แต่ละคนต้องเตรียมชุดข้อมูล CSV ของตนเองไว้ในเครื่องก่อนใช้การแปลงข้อความเป็นภาพเคลื่อนไหว
 
-## What it does
+## ความสามารถ
 
-- Plays pose-animation sequences in the browser.
-- Generates a sequence from a text query by looking up matching CSV clips in a local dataset.
-- Supports speech-to-text input through an optional local Vosk model.
-- Lets you load built-in avatars or your own SVG illustration.
+- เล่นลำดับท่าทาง (pose animation) ผ่านเบราว์เซอร์
+- สร้างลำดับท่าทางจากข้อความ โดยค้นหาไฟล์ CSV ที่ตรงกันจากชุดข้อมูลในเครื่อง
+- รองรับการแปลงเสียงเป็นข้อความด้วยโมเดล Vosk ในเครื่อง (ตัวเลือกเพิ่มเติม)
+- เลือกใช้อวตารที่มีให้ หรือโหลดภาพประกอบ SVG ของคุณเอง
 
-## Requirements
+## สิ่งที่ต้องมี
 
-- Windows with Python 3.10 or newer
-- A modern web browser
-- Optional: the [`vosk`](https://pypi.org/project/vosk/) Python package and a local Vosk English model for microphone transcription
+- Windows และ Python 3.10 ขึ้นไป
+- เบราว์เซอร์รุ่นปัจจุบัน
+- หากต้องการใช้ไมโครโฟน: ติดตั้งแพ็กเกจ [`vosk`](https://pypi.org/project/vosk/) และดาวน์โหลดโมเดล Vosk ภาษาอังกฤษไว้ในเครื่อง
 
-## Getting started
+## เริ่มต้นใช้งาน
 
-1. Clone the project and open its folder.
+1. ดาวน์โหลดโปรเจกต์และเปิดโฟลเดอร์
 
    ```powershell
-   git clone https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
-   cd YOUR-REPOSITORY
+   git clone https://github.com/tinnapats/signing-avatar-pose-animator.git
+   cd signing-avatar-pose-animator
    ```
 
-2. Create and activate a virtual environment.
+2. สร้างและเปิดใช้งาน Python environment
 
    ```powershell
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1
    ```
 
-3. Install the optional speech-recognition dependency if you want microphone transcription.
+3. หากต้องการใช้การรับเสียงจากไมโครโฟน ให้ติดตั้ง Vosk
 
    ```powershell
    pip install vosk
    ```
 
-4. Put your CSV dataset in `SLclean/` (this folder stays only on your computer). Each clip should be available as a CSV file that can be processed by `export_pose_animator_sequence.py`.
+4. วางชุดข้อมูล CSV ของคุณไว้ในโฟลเดอร์ `SLclean/` โฟลเดอร์นี้จะอยู่เฉพาะในเครื่องและไม่ถูกอัปโหลดขึ้น GitHub แต่ละคลิปควรเป็นไฟล์ CSV ที่ `export_pose_animator_sequence.py` อ่านได้
 
-5. If using microphone transcription, download and unpack a compatible Vosk model into `vosk-model-small-en-us-0.15/`, or pass its location with `--vosk-model-dir`.
+5. หากต้องการใช้ไมโครโฟน ให้ดาวน์โหลดและแตกไฟล์โมเดล Vosk ไว้ที่ `vosk-model-small-en-us-0.15/` หรือระบุตำแหน่งด้วย `--vosk-model-dir`
 
-6. Start the server.
+6. เปิด server
 
    ```powershell
    .\.venv\Scripts\python.exe .\run_pose_animator_server.py --port 8025
    ```
 
-   Or double-click `open_signing_avatar.cmd` after creating `.venv`.
+   หรือหลังจากสร้าง `.venv` แล้ว ให้ดับเบิลคลิก `open_signing_avatar.cmd`
 
-7. Open the address shown in the terminal, normally:
+7. เปิดลิงก์ที่แสดงในหน้าต่างคำสั่ง โดยปกติคือ
 
    ```text
    http://127.0.0.1:8025/dataset_player.html
    ```
 
-## Using the app
+## วิธีใช้งาน
 
-- Enter text in the player and choose **Generate From Text** to look up matching local CSV clips.
-- To play a saved animation, load a JSON sequence in the player.
-- Use the controls to select a built-in avatar or load your own SVG illustration.
+- พิมพ์ข้อความในหน้าตัวเล่น แล้วเลือก **Generate From Text** เพื่อค้นหาคลิป CSV ที่ตรงกันจากชุดข้อมูลในเครื่อง
+- หากมีไฟล์ลำดับท่าทาง JSON อยู่แล้ว ให้โหลดไฟล์ดังกล่าวในตัวเล่นเพื่อเล่นภาพเคลื่อนไหว
+- ใช้ปุ่มควบคุมเพื่อเลือกอวตารที่มีให้ หรือโหลดไฟล์ภาพประกอบ SVG ของคุณเอง
 
-### Export a sequence manually
+### สร้างไฟล์ลำดับท่าทางด้วยตนเอง
 
 ```powershell
 .\.venv\Scripts\python.exe .\export_pose_animator_sequence.py `
@@ -72,21 +72,21 @@ A local web application for turning text or CSV pose data into an animated signi
   --output ".\pose-animator\resources\data\my_sequence.json"
 ```
 
-Then load `pose-animator/resources/data/my_sequence.json` in the browser player.
+จากนั้นโหลด `pose-animator/resources/data/my_sequence.json` ในตัวเล่นบนเบราว์เซอร์
 
-## Project layout
+## โครงสร้างโปรเจกต์
 
-| Path | Purpose |
+| ตำแหน่ง | หน้าที่ |
 | --- | --- |
-| `run_pose_animator_server.py` | Local web server and text/voice API |
-| `export_pose_animator_sequence.py` | Converts pose CSV clips into player JSON |
-| `pose-animator/` | Browser player and rendering assets |
-| `SLclean/` | Your private local dataset — not published |
+| `run_pose_animator_server.py` | Web server ในเครื่องและ API สำหรับข้อความ/เสียง |
+| `export_pose_animator_sequence.py` | แปลงคลิปท่าทาง CSV เป็น JSON สำหรับตัวเล่น |
+| `pose-animator/` | ตัวเล่นบนเบราว์เซอร์และไฟล์สำหรับเรนเดอร์ |
+| `SLclean/` | ชุดข้อมูลส่วนตัวในเครื่อง — ไม่ถูกเผยแพร่ |
 
-## Keeping data private
+## การรักษาความเป็นส่วนตัวของข้อมูล
 
-The `.gitignore` file explicitly excludes `SLclean/`, the downloaded Vosk model, virtual environments, backups, and generated temporary files. Before publishing, use `git status` to confirm that no private files are staged.
+ไฟล์ `.gitignore` ตั้งค่าไม่ให้อัปโหลด `SLclean/`, โมเดล Vosk ที่ดาวน์โหลด, virtual environment, ไฟล์สำรอง และไฟล์ชั่วคราวที่สร้างระหว่างทำงาน ก่อนอัปโหลดงานเพิ่ม ให้ใช้ `git status` ตรวจสอบว่าไม่มีข้อมูลส่วนตัวถูกเตรียมอัปโหลด
 
-## Credits
+## เครดิต
 
-The browser animation component is based on Pose Animator. See the license and documentation in [`pose-animator/`](pose-animator/).
+ส่วนแสดงผลภาพเคลื่อนไหวบนเบราว์เซอร์พัฒนาต่อยอดจาก Pose Animator ดูสัญญาอนุญาตและเอกสารเพิ่มเติมได้ใน [`pose-animator/`](pose-animator/)
