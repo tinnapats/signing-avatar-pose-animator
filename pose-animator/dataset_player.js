@@ -4,13 +4,14 @@ import { SVGUtils } from './utils/svgUtils.js';
 import { FileUtils } from './utils/fileUtils.js';
 import { PoseIllustration } from './illustrationGen/illustration.js';
 import { Skeleton, HAND_PART_NAMES, HAND_BONE_CONNECTIONS, buildDefaultHandKeypoints } from './illustrationGen/skeleton.js';
+import { HAND_LANDMARK_IDS, normalizeSequence } from './dataset_types.ts';
 const paperLib = paper.default || paper;
 
 const CANVAS_WIDTH = 513;
 const CANVAS_HEIGHT = 513;
-const WAIST_CAMERA_ZOOM = 2.05;
+const WAIST_CAMERA_ZOOM = 1.65;
 const WAIST_CAMERA_TARGET_X = 0.5;
-const WAIST_CAMERA_TARGET_HIP_Y = 1.03;
+const WAIST_CAMERA_TARGET_HIP_Y = 0.82;
 const MIC_LEVEL_THRESHOLD = 0.012;
 const MIC_END_SILENCE_MS = 900;
 const MIC_MIN_VOICE_MS = 220;
@@ -26,26 +27,6 @@ const BUILTIN_AVATARS = {
 };
 const DEFAULT_AVATAR = 'signing';
 
-const REQUIRED_POSE_PARTS = [
-  'nose',
-  'leftEye',
-  'rightEye',
-  'leftEar',
-  'rightEar',
-  'leftShoulder',
-  'rightShoulder',
-  'leftElbow',
-  'rightElbow',
-  'leftWrist',
-  'rightWrist',
-  'leftHip',
-  'rightHip',
-  'leftKnee',
-  'rightKnee',
-  'leftAnkle',
-  'rightAnkle',
-];
-const HAND_LANDMARK_IDS = Array.from({ length: 21 }, (_, idx) => idx);
 const HAND_CONNECTIONS = [
   [0, 1], [1, 2], [2, 3], [3, 4],
   [0, 5], [5, 6], [6, 7], [7, 8],
@@ -55,30 +36,36 @@ const HAND_CONNECTIONS = [
   [0, 17],
 ];
 const HAND_PALM_IDS = [0, 5, 9, 13, 17];
+const HAND_PALM_CONNECTION_KEYS = new Set(['0-5', '0-9', '0-13', '0-17', '5-9', '9-13', '13-17']);
 const HAND_TIP_IDS = new Set([4, 8, 12, 16, 20]);
-const HAND_MIN_SCORE = 0.18;
-const HAND_DETAIL_SCALE = 1.6;
-const HAND_LINE_WIDTH = 2.25;
-const HAND_JOINT_RADIUS = 1.9;
-const HAND_TIP_RADIUS = 2.7;
-const SHOW_HAND_OVERLAYS = false;
-// The generic landmark rig does not blend with the built-in SVG avatars.
-// Keep their native hands until a dedicated, skinned signing-hand asset exists.
+const HAND_MIN_SCORE = 0.001;
+const HAND_FULL_DETAIL_SCORE = 0.75;
+const FLIP_HELD_DETAIL_FACTOR = 0.4;
+const HAND_TO_FOREARM_RATIO = 0.72;
+const HAND_SCALE_MIN = 0.70;
+const HAND_SCALE_MAX = 1.60;
+const HAND_LINE_WIDTH = 7.0;
+let showHandOverlays = true;
+// Direct bone rendering follows all 21 landmarks without stretching a shared
+// mesh across crossing fingers. Keep mesh skinning available for experiments.
 const ENABLE_PROCEDURAL_HAND_RIG = false;
 const HAND_STYLES = {
   left: {
     stroke: '#80513c',
-    fill: 'rgba(247, 202, 170, 0.72)',
+    fill: 'rgba(247, 202, 170, 1)',
     joint: '#c48266',
     tip: '#d88f82',
   },
   right: {
     stroke: '#704838',
-    fill: 'rgba(244, 190, 160, 0.72)',
+    fill: 'rgba(244, 190, 160, 1)',
     joint: '#ba765f',
     tip: '#d5847c',
   },
 };
+
+let handOverlayStyles = HAND_STYLES;
+let handOverlayScales = { left: 1, right: 1 };
 
 let canvasScope = null;
 let skeleton = null;
@@ -117,6 +104,7 @@ const el = {
   speedLabel: null,
   frameSlider: null,
   loopCheck: null,
+  handOverlayCheck: null,
   status: null,
 };
 
@@ -139,117 +127,6 @@ function getFps() {
   return Math.max(1, Number(sequence.meta.fps) || 30);
 }
 
-function normalizePose(pose) {
-  if (!pose || !pose.keypoints || !pose.keypoints.length) {
-    return null;
-  }
-  const byPart = {};
-  pose.keypoints.forEach((kp) => {
-    if (!kp || !kp.part || !kp.position) return;
-    byPart[kp.part] = kp;
-  });
-  const keypoints = REQUIRED_POSE_PARTS.map((part) => {
-    const kp = byPart[part];
-    if (kp && kp.position) {
-      return {
-        part: part,
-        score: Number(kp.score || 1.0),
-        position: {
-          x: Number(kp.position.x || 0),
-          y: Number(kp.position.y || 0),
-        },
-      };
-    }
-    return {
-      part: part,
-      score: 0,
-      position: { x: 0, y: 0 },
-    };
-  });
-  return {
-    score: Number(pose.score || 1.0),
-    keypoints: keypoints,
-  };
-}
-
-function normalizeFace(face) {
-  if (!face || !face.positions || !face.positions.length) {
-    return null;
-  }
-  return {
-    faceInViewConfidence: Number(face.faceInViewConfidence || 1.0),
-    positions: face.positions.map((v) => Number(v || 0)),
-  };
-}
-
-function normalizeHand(hand) {
-  if (!hand || !hand.keypoints || !hand.keypoints.length) {
-    return null;
-  }
-  const byId = {};
-  hand.keypoints.forEach((kp) => {
-    const landmarkId = Number(kp && (kp.landmarkId ?? kp.landmark_id));
-    if (!Number.isFinite(landmarkId) || !kp || !kp.position) return;
-    byId[landmarkId] = {
-      landmarkId: landmarkId,
-      score: Number(kp.score || 0),
-      position: {
-        x: Number(kp.position.x || 0),
-        y: Number(kp.position.y || 0),
-      },
-    };
-  });
-  const keypoints = HAND_LANDMARK_IDS.map((landmarkId) => {
-    const kp = byId[landmarkId];
-    if (kp) return kp;
-    return {
-      landmarkId: landmarkId,
-      score: 0,
-      position: { x: 0, y: 0 },
-    };
-  });
-  return {
-    score: Number(hand.score || 0),
-    keypoints: keypoints,
-  };
-}
-
-function normalizeSequence(payload) {
-  if (!payload || !payload.frames || !Array.isArray(payload.frames)) {
-    throw new Error('Invalid sequence JSON: missing frames array');
-  }
-
-  const out = {
-    meta: {
-      fps: payload.meta && payload.meta.fps ? Number(payload.meta.fps) : 30,
-      canvasWidth: payload.meta && payload.meta.canvasWidth ? Number(payload.meta.canvasWidth) : CANVAS_WIDTH,
-      canvasHeight: payload.meta && payload.meta.canvasHeight ? Number(payload.meta.canvasHeight) : CANVAS_HEIGHT,
-    },
-    frames: [],
-  };
-
-  payload.frames.forEach((frame) => {
-    if (!frame) return;
-    const pose = normalizePose(frame.pose);
-    if (!pose) return;
-    const hands = frame.hands || {};
-    out.frames.push({
-      pose: pose,
-      face: normalizeFace(frame.face),
-      hands: {
-        left: normalizeHand(hands.left || frame.leftHand || frame.left_hand),
-        right: normalizeHand(hands.right || frame.rightHand || frame.right_hand),
-      },
-    });
-  });
-
-  if (!out.frames.length) {
-    throw new Error('Sequence has no valid frames');
-  }
-
-  return out;
-}
-
 function cloneColorForScope(scope, value) {
   if (!value) return null;
   if (typeof value.clone === 'function') {
@@ -258,6 +135,36 @@ function cloneColorForScope(scope, value) {
   return new scope.Color(value);
 }
 
+function inferHandOverlayStyle(svgScope, wristPoint, elbowPoint, side) {
+  const fallback = HAND_STYLES[side] || HAND_STYLES.left;
+  const samplePoint = wristPoint.multiply(0.58).add(elbowPoint.multiply(0.42));
+  const candidates = svgScope.project.getItems({ recursive: true }).filter((item) => {
+    if (!item || !item.parent || !item.parent.name || !item.parent.name.startsWith('illustration')) return false;
+    if (!(SVGUtils.isPath(item) || SVGUtils.isShape(item)) || !item.fillColor || !item.bounds) return false;
+    return item.bounds.contains(samplePoint);
+  });
+  candidates.sort((a, b) => {
+    const areaA = Number(a.bounds.width || 0) * Number(a.bounds.height || 0);
+    const areaB = Number(b.bounds.width || 0) * Number(b.bounds.height || 0);
+    return areaA - areaB;
+  });
+  const sourceColor = cloneColorForScope(svgScope, candidates[0] && candidates[0].fillColor);
+  if (!sourceColor) return fallback;
+  sourceColor.alpha = 1;
+  const outlineColor = sourceColor.clone();
+  if (typeof outlineColor.brightness === 'number') {
+    outlineColor.brightness = Math.max(0.18, outlineColor.brightness * 0.55);
+  }
+  if (typeof outlineColor.saturation === 'number') {
+    outlineColor.saturation = Math.min(1, outlineColor.saturation + 0.12);
+  }
+  outlineColor.alpha = 1;
+  return {
+    ...fallback,
+    fill: sourceColor.toCSS(true),
+    stroke: outlineColor.toCSS(true),
+  };
+}
 function inferHandRigStyle(svgScope, wristPoint, side) {
   const fallback = HAND_STYLES[side] || HAND_STYLES.left;
   const items = svgScope.project.getItems({ recursive: true }).filter((item) => {
@@ -283,7 +190,7 @@ function inferHandRigStyle(svgScope, wristPoint, side) {
   if (fillColor.alpha === undefined) {
     fillColor.alpha = 1;
   }
-  fillColor.alpha = 0.98;
+  fillColor.alpha = 1;
   if (typeof fillColor.brightness === 'number') {
     fillColor.brightness = Math.min(0.96, Math.max(0.76, fillColor.brightness + 0.08));
   }
@@ -299,7 +206,7 @@ function inferHandRigStyle(svgScope, wristPoint, side) {
   const haloColor = new svgScope.Color(1, 1, 1, 0.94);
   const outlineColor = strokeColor.clone();
   const palmColor = fillColor.clone();
-  palmColor.alpha = 0.94;
+  palmColor.alpha = 1;
   if (typeof palmColor.brightness === 'number') {
     palmColor.brightness = Math.min(0.98, palmColor.brightness + 0.04);
   }
@@ -484,6 +391,55 @@ function getPosePart(pose, partName) {
   return null;
 }
 
+function getPoseKeypoint(pose, partName) {
+  if (!pose || !pose.keypoints || !pose.keypoints.length) return null;
+  return pose.keypoints.find((kp) => kp && kp.part === partName && kp.position) || null;
+}
+
+function median(values) {
+  if (!values || !values.length) return 0;
+  const sorted = values.slice().sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) * 0.5;
+}
+
+function distance3D(a, b) {
+  if (!a || !b) return 0;
+  const dx = Number(a.x || 0) - Number(b.x || 0);
+  const dy = Number(a.y || 0) - Number(b.y || 0);
+  const dz = Number(a.z || 0) - Number(b.z || 0);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function calculateHandOverlayScale(sequenceData, side) {
+  if (!sequenceData || !Array.isArray(sequenceData.frames)) return 1;
+  const middleFingerChain = [0, 9, 10, 11, 12];
+  const handLengths = [];
+  const forearmLengths = [];
+  sequenceData.frames.forEach((frame) => {
+    const hand = frame && frame.hands ? frame.hands[side] : null;
+    if (!hand || !Array.isArray(hand.keypoints) || hand.keypoints.length < 13) return;
+    const chainPoints = middleFingerChain.map((landmarkId) => hand.keypoints[landmarkId]);
+    if (chainPoints.some((keypoint) => !keypoint || !keypoint.position || Number(keypoint.score || 0) <= 0)) return;
+    const wrist = getPoseKeypoint(frame.pose, `${side}Wrist`);
+    const elbow = getPoseKeypoint(frame.pose, `${side}Elbow`);
+    if (!wrist || !elbow || Number(wrist.score || 0) < 0.2 || Number(elbow.score || 0) < 0.2) return;
+    let handLength = 0;
+    for (let index = 1; index < chainPoints.length; index += 1) {
+      handLength += distance3D(chainPoints[index - 1].position, chainPoints[index].position);
+    }
+    const forearmLength = distance3D(wrist.position, elbow.position);
+    if (handLength > 1 && forearmLength > 1) {
+      handLengths.push(handLength);
+      forearmLengths.push(forearmLength);
+    }
+  });
+  if (handLengths.length < 3) return 1;
+  const rawScale = (median(forearmLengths) * HAND_TO_FOREARM_RATIO) / median(handLengths);
+  return Math.max(HAND_SCALE_MIN, Math.min(HAND_SCALE_MAX, rawScale));
+}
 function getHipAnchor(pose) {
   const leftHip = getPosePart(pose, 'leftHip');
   const rightHip = getPosePart(pose, 'rightHip');
@@ -513,112 +469,102 @@ function getHandPoint(hand, landmarkId) {
   return kp.position;
 }
 
-function projectHandPoint(rawPoint, rawWrist, targetWrist) {
+function getDetailedHandAlpha(hand) {
+  if (!hand || Number(hand.score || 0) < HAND_MIN_SCORE) return 0;
+  const visibleLandmarks = Array.isArray(hand.keypoints)
+    ? hand.keypoints.filter((kp) => kp && kp.position && Number(kp.score || 0) > 0).length
+    : 0;
+  return visibleLandmarks >= 6 ? 1 : 0;
+}
+
+function projectHandPoint(rawPoint, rawWrist, targetWrist, handScale) {
   return new canvasScope.Point(
-    Number(targetWrist.x) + (Number(rawPoint.x) - Number(rawWrist.x)) * HAND_DETAIL_SCALE,
-    Number(targetWrist.y) + (Number(rawPoint.y) - Number(rawWrist.y)) * HAND_DETAIL_SCALE,
+    Number(targetWrist.x) + (Number(rawPoint.x) - Number(rawWrist.x)) * handScale,
+    Number(targetWrist.y) + (Number(rawPoint.y) - Number(rawWrist.y)) * handScale,
   );
 }
 
-function getHandOverlayWidth(fromId, toId) {
-  if (fromId === 0 || toId === 0) return HAND_LINE_WIDTH * 1.32;
-  if (HAND_TIP_IDS.has(toId)) return HAND_LINE_WIDTH * 0.68;
-  if ([1, 5, 9, 13, 17].includes(fromId)) return HAND_LINE_WIDTH * 1.02;
-  return HAND_LINE_WIDTH * 0.84;
+function getHandOverlayWidth(fromId, toId, handScale) {
+  const baseWidth = HAND_LINE_WIDTH * handScale;
+  if (fromId === 0 || toId === 0) return baseWidth * 1.32;
+  if (HAND_TIP_IDS.has(toId)) return baseWidth * 0.68;
+  if ([1, 5, 9, 13, 17].includes(fromId)) return baseWidth * 1.02;
+  return baseWidth * 0.84;
 }
 
-function drawHandConnection(a, b, style, width) {
-  new canvasScope.Path({
+function drawHandStroke(group, a, b, color, width) {
+  group.addChild(new canvasScope.Path({
     segments: [a, b],
-    strokeColor: 'rgba(255, 255, 255, 0.9)',
-    strokeWidth: width + 1.35,
-    strokeCap: 'round',
-    strokeJoin: 'round',
-  });
-  new canvasScope.Path({
-    segments: [a, b],
-    strokeColor: style.stroke,
-    strokeWidth: width + 0.65,
-    strokeCap: 'round',
-    strokeJoin: 'round',
-  });
-  new canvasScope.Path({
-    segments: [a, b],
-    strokeColor: style.joint,
+    strokeColor: color,
     strokeWidth: width,
     strokeCap: 'round',
     strokeJoin: 'round',
-  });
+  }));
 }
 
-function drawHandJoint(point, landmarkId, style) {
-  const isTip = HAND_TIP_IDS.has(landmarkId);
-  const radius = isTip ? HAND_TIP_RADIUS : HAND_JOINT_RADIUS;
-  new canvasScope.Path.Circle({
-    center: point,
-    radius: radius + 0.7,
-    fillColor: 'rgba(255, 255, 255, 0.9)',
-    strokeColor: null,
-  });
-  new canvasScope.Path.Circle({
-    center: point,
-    radius: radius,
-    fillColor: isTip ? style.tip : style.joint,
-    strokeColor: style.stroke,
-    strokeWidth: 0.85,
-  });
-}
 
 function drawHandDetails(frame, side) {
   const hand = frame && frame.hands ? frame.hands[side] : null;
-  if (!hand || Number(hand.score || 0) < HAND_MIN_SCORE) return;
+  const detailAlpha = getDetailedHandAlpha(hand);
+  if (!hand || Number(hand.score || 0) < HAND_MIN_SCORE || detailAlpha <= 0) return;
 
   const rawWrist = getHandPoint(hand, 0);
   if (!rawWrist) return;
 
-  const poseWrist = getPosePart(frame.pose, side === 'left' ? 'leftWrist' : 'rightWrist') || rawWrist;
+  const poseWristKeypoint = getPoseKeypoint(
+    frame.pose,
+    side === 'left' ? 'leftWrist' : 'rightWrist',
+  );
+  const poseWrist = poseWristKeypoint && Number(poseWristKeypoint.score || 0) >= 0.2
+    ? poseWristKeypoint.position
+    : rawWrist;
+  const handScale = Number(handOverlayScales[side] || 1);
   const projected = HAND_LANDMARK_IDS.map((landmarkId) => {
     const rawPoint = getHandPoint(hand, landmarkId);
     if (!rawPoint) return null;
-    return projectHandPoint(rawPoint, rawWrist, poseWrist);
+    return projectHandPoint(rawPoint, rawWrist, poseWrist, handScale);
   });
 
   const visibleCount = projected.filter(Boolean).length;
   if (visibleCount < 6) return;
 
-  const style = HAND_STYLES[side] || HAND_STYLES.left;
+  const style = handOverlayStyles[side] || HAND_STYLES[side] || HAND_STYLES.left;
+  const group = new canvasScope.Group();
+  canvasScope.project.activeLayer.addChild(group);
+  group.opacity = 1;
   if (HAND_PALM_IDS.every((landmarkId) => projected[landmarkId])) {
-    [
-      { fill: 'rgba(255, 255, 255, 0.82)', stroke: 'rgba(255, 255, 255, 0.82)', width: 2.4 },
-      { fill: style.fill, stroke: style.stroke, width: 0.85 },
-    ].forEach((palmStyle) => {
-      const palm = new canvasScope.Path({
-        closed: true,
-        fillColor: palmStyle.fill,
-        strokeColor: palmStyle.stroke,
-        strokeWidth: palmStyle.width,
-      });
-      HAND_PALM_IDS.forEach((landmarkId) => {
-        palm.add(projected[landmarkId]);
-      });
-      palm.smooth({ type: 'continuous' });
+    const palm = new canvasScope.Path({
+      closed: true,
+      fillColor: style.fill,
+      strokeColor: style.fill,
+      strokeWidth: 0.8,
     });
+    HAND_PALM_IDS.forEach((landmarkId) => {
+      palm.add(projected[landmarkId]);
+    });
+    group.addChild(palm);
   }
 
-  HAND_CONNECTIONS.forEach(([fromId, toId]) => {
-    if (!projected[fromId] || !projected[toId]) return;
-    drawHandConnection(
-      projected[fromId],
-      projected[toId],
-      style,
-      getHandOverlayWidth(fromId, toId),
-    );
+  const visibleConnections = HAND_CONNECTIONS.reduce((connections, [fromId, toId]) => {
+    if (!projected[fromId] || !projected[toId]) return connections;
+    const connectionKey = `${Math.min(fromId, toId)}-${Math.max(fromId, toId)}`;
+    if (HAND_PALM_CONNECTION_KEYS.has(connectionKey)) return connections;
+    connections.push({
+      a: projected[fromId],
+      b: projected[toId],
+      width: getHandOverlayWidth(fromId, toId, handScale),
+    });
+    return connections;
+  }, []);
+
+  visibleConnections.forEach((connection) => {
+    drawHandStroke(group, connection.a, connection.b, style.fill, connection.width + 1.0);
+  });
+  visibleConnections.forEach((connection) => {
+    drawHandStroke(group, connection.a, connection.b, style.fill, connection.width);
   });
 
-  projected.forEach((point, landmarkId) => {
-    if (!point) return;
-    drawHandJoint(point, landmarkId, style);
-  });
+
 }
 
 function renderHandOverlays(frame) {
@@ -636,9 +582,11 @@ function renderFrame(frameIndex) {
 
   skeleton.reset();
   canvasScope.project.clear();
-  illustration.updateSkeleton(frame.pose, frame.face || null, frame.hands || null);
+  const skeletonHands = showHandOverlays ? (frame.hands || null) : null;
+  illustration.updateSkeleton(frame.pose, frame.face || null, skeletonHands);
+  illustration.preferDetailedHands = showHandOverlays;
   illustration.draw();
-  if (SHOW_HAND_OVERLAYS && !handRigReady) {
+  if (showHandOverlays && !handRigReady) {
     renderHandOverlays(frame);
   }
   applyWaistCameraFraming(frame.pose);
@@ -712,6 +660,20 @@ async function loadSVG(target) {
   const svgScope = await SVGUtils.importSVG(target);
   handRigReady = false;
   skeleton = new Skeleton(svgScope);
+  handOverlayStyles = {
+    left: inferHandOverlayStyle(
+      svgScope,
+      skeleton.bLeftElbowLeftWrist.kp1.position,
+      skeleton.bLeftElbowLeftWrist.kp0.position,
+      'left',
+    ),
+    right: inferHandOverlayStyle(
+      svgScope,
+      skeleton.bRightElbowRightWrist.kp1.position,
+      skeleton.bRightElbowRightWrist.kp0.position,
+      'right',
+    ),
+  };
   if (ENABLE_PROCEDURAL_HAND_RIG) {
     try {
       attachProceduralHandRig(svgScope, skeleton);
@@ -723,6 +685,8 @@ async function loadSVG(target) {
   }
   illustration = new PoseIllustration(canvasScope);
   illustration.bindSkeleton(skeleton, svgScope);
+  handRigReady = ENABLE_PROCEDURAL_HAND_RIG && illustration.hasProceduralHandRig();
+  illustration.useProceduralHands = handRigReady;
   if (sequence && sequence.frames.length) {
     renderFrame(currentFrame);
   } else {
@@ -1014,14 +978,31 @@ async function stopMicCaptureAndTranscribe(trigger = 'manual') {
 
 function loadSequencePayload(payload) {
   sequence = normalizeSequence(payload);
+  handOverlayScales = {
+    left: calculateHandOverlayScale(sequence, 'left'),
+    right: calculateHandOverlayScale(sequence, 'right'),
+  };
   currentFrame = 0;
   updateFrameSlider();
   renderFrame(currentFrame);
-  const hasHandDetail = sequence.frames.some((frame) => {
-    const hands = frame && frame.hands ? frame.hands : {};
-    return ['left', 'right'].some((side) => hands[side] && Number(hands[side].score || 0) >= HAND_MIN_SCORE);
+  const handCoverage = ['left', 'right'].map((side) => {
+    const visibleFrames = sequence.frames.filter((frame) => {
+      const hand = frame && frame.hands ? frame.hands[side] : null;
+      return hand && getDetailedHandAlpha(hand) > 0.05;
+    }).length;
+    return Math.round((visibleFrames / sequence.frames.length) * 100);
   });
-  setStatus(`Loaded ${sequence.frames.length} frames @ ${getFps()} FPS${hasHandDetail ? ' with detailed hands' : ''}`);
+  const hasHandDetail = handCoverage.some((coverage) => coverage > 0);
+  const coverageText = hasHandDetail
+    ? ` | hand coverage L ${handCoverage[0]}% / R ${handCoverage[1]}%`
+    : ' | no detailed hand detection';
+  const handScaleText = hasHandDetail
+    ? ` | proportional scale L ${handOverlayScales.left.toFixed(2)} / R ${handOverlayScales.right.toFixed(2)}`
+    : '';
+  const handRendererText = handRigReady
+    ? ' | skinned SVG hands'
+    : ' | direct articulated hands';
+  setStatus(`Loaded ${sequence.frames.length} frames @ ${getFps()} FPS${coverageText}${handScaleText}${handRendererText}`);
 }
 
 async function onSequenceFileChange(event) {
@@ -1085,6 +1066,8 @@ async function init() {
   el.speedLabel = document.getElementById('speedLabel');
   el.frameSlider = document.getElementById('frameSlider');
   el.loopCheck = document.getElementById('loopCheck');
+  el.handOverlayCheck = document.getElementById('handOverlayCheck');
+  el.handOverlayCheck.checked = showHandOverlays;
   el.status = document.getElementById('status');
 
   const canvas = document.querySelector('.illustration-canvas');
@@ -1134,6 +1117,11 @@ async function init() {
     if (!sequence) return;
     currentFrame = Number(el.frameSlider.value || 0);
     renderFrame(currentFrame);
+  });
+
+  el.handOverlayCheck.addEventListener('change', () => {
+    showHandOverlays = el.handOverlayCheck.checked;
+    if (sequence) renderFrame(currentFrame);
   });
 
   el.avatarSelect.addEventListener('change', async () => {

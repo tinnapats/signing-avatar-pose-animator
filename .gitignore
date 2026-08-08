@@ -6,6 +6,8 @@ SLclean/
 .venv.python310-broken/
 __pycache__/
 *.py[cod]
+node_modules/
+*.log
 
 # Local speech-recognition model and downloaded archive
 vosk-model-small-en-us-0.15/

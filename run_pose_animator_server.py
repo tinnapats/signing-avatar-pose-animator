@@ -26,6 +26,15 @@ def _to_float(value: str, default: float) -> float:
         return default
 
 
+def _to_bool(value: str, default: bool) -> bool:
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return bool(default)
+
+
 class PoseAnimatorHTTPServer(ThreadingHTTPServer):
     """A local server that can be restarted quickly from an IDE."""
 
@@ -55,6 +64,13 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
     default_upsample_factor: int = 2
     default_gaussian_sigma: float = 1.2
     default_gaussian_radius: int = 2
+    default_hand_gaussian_sigma: float = 1.2
+    default_hand_gaussian_radius: int = 2
+    default_hand_max_gap_frames: int = 4
+    default_hand_fade_frames: int = 3
+    default_skip_hand_flips: bool = True
+    default_hand_flip_orientation_threshold: float = 0.12
+    default_repair_hand_topology: bool = False
     vosk_model_dir: Path = Path("vosk-model-small-en-us-0.15")
     _vosk_model = None
 
@@ -237,6 +253,37 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
             "gaussian_radius",
             query.get("gaussianRadius", [self.default_gaussian_radius]),
         )[0]
+        hand_gaussian_sigma_raw = query.get(
+            "hand_gaussian_sigma",
+            query.get("handGaussianSigma", [self.default_hand_gaussian_sigma]),
+        )[0]
+        hand_gaussian_radius_raw = query.get(
+            "hand_gaussian_radius",
+            query.get("handGaussianRadius", [self.default_hand_gaussian_radius]),
+        )[0]
+        hand_max_gap_frames_raw = query.get(
+            "hand_max_gap_frames",
+            query.get("handMaxGapFrames", [self.default_hand_max_gap_frames]),
+        )[0]
+        hand_fade_frames_raw = query.get(
+            "hand_fade_frames",
+            query.get("handFadeFrames", [self.default_hand_fade_frames]),
+        )[0]
+        skip_hand_flips_raw = query.get(
+            "skip_hand_flips",
+            query.get("skipHandFlips", [self.default_skip_hand_flips]),
+        )[0]
+        hand_flip_orientation_threshold_raw = query.get(
+            "hand_flip_orientation_threshold",
+            query.get(
+                "handFlipOrientationThreshold",
+                [self.default_hand_flip_orientation_threshold],
+            ),
+        )[0]
+        repair_hand_topology_raw = query.get(
+            "repair_hand_topology",
+            query.get("repairHandTopology", [self.default_repair_hand_topology]),
+        )[0]
 
         upsample_factor = max(
             1,
@@ -259,6 +306,37 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
                 self.default_gaussian_radius,
             ),
         )
+        hand_gaussian_sigma = max(
+            0.0,
+            _to_float(str(hand_gaussian_sigma_raw), self.default_hand_gaussian_sigma),
+        )
+        hand_gaussian_radius = max(
+            0,
+            _to_int(str(hand_gaussian_radius_raw), self.default_hand_gaussian_radius),
+        )
+        hand_max_gap_frames = max(
+            0,
+            _to_int(str(hand_max_gap_frames_raw), self.default_hand_max_gap_frames),
+        )
+        hand_fade_frames = max(
+            0,
+            _to_int(str(hand_fade_frames_raw), self.default_hand_fade_frames),
+        )
+        skip_hand_flips = _to_bool(str(skip_hand_flips_raw), self.default_skip_hand_flips)
+        hand_flip_orientation_threshold = max(
+            0.01,
+            min(
+                0.95,
+                _to_float(
+                    str(hand_flip_orientation_threshold_raw),
+                    self.default_hand_flip_orientation_threshold,
+                ),
+            ),
+        )
+        repair_hand_topology = _to_bool(
+            str(repair_hand_topology_raw),
+            self.default_repair_hand_topology,
+        )
 
         try:
             payload = build_payload(
@@ -273,6 +351,13 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
                 upsample_factor=upsample_factor,
                 gaussian_sigma=gaussian_sigma,
                 gaussian_radius=gaussian_radius,
+                hand_gaussian_sigma=hand_gaussian_sigma,
+                hand_gaussian_radius=hand_gaussian_radius,
+                hand_max_gap_frames=hand_max_gap_frames,
+                hand_fade_frames=hand_fade_frames,
+                skip_hand_flips=skip_hand_flips,
+                hand_flip_orientation_threshold=hand_flip_orientation_threshold,
+                repair_hand_topology=repair_hand_topology,
             )
         except ValueError as exc:
             self._send_json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
@@ -314,8 +399,12 @@ def main() -> None:
         help="Start the server without opening the player page.",
     )
     parser.set_defaults(open_browser=True)
-    parser.add_argument("--static-dir", default="pose-animator", help="Directory to serve as web root.")
-    parser.add_argument("--data-dir", default="SLclean", help="CSV dataset root.")
+    parser.add_argument("--static-dir", default="pose-animator-dist", help="Directory to serve as web root.")
+    parser.add_argument(
+        "--data-dir",
+        default=r"C:\งาน\project_1\project_1\SLclean\SLclean",
+        help="CSV dataset root.",
+    )
     parser.add_argument("--fps", type=float, default=30.0)
     parser.add_argument("--width", type=int, default=513)
     parser.add_argument("--height", type=int, default=513)
@@ -324,6 +413,18 @@ def main() -> None:
     parser.add_argument("--upsample-factor", type=int, default=2)
     parser.add_argument("--gaussian-sigma", type=float, default=1.2)
     parser.add_argument("--gaussian-radius", type=int, default=2)
+    parser.add_argument("--hand-gaussian-sigma", type=float, default=1.2)
+    parser.add_argument("--hand-gaussian-radius", type=int, default=2)
+    parser.add_argument("--hand-max-gap-frames", type=int, default=4)
+    parser.add_argument("--hand-fade-frames", type=int, default=3)
+    parser.add_argument(
+        "--keep-hand-flips",
+        dest="skip_hand_flips",
+        action="store_false",
+    )
+    parser.set_defaults(skip_hand_flips=True)
+    parser.add_argument("--hand-flip-orientation-threshold", type=float, default=0.12)
+    parser.add_argument("--repair-hand-topology", action="store_true")
     parser.add_argument(
         "--vosk-model-dir",
         type=str,
@@ -355,6 +456,16 @@ def main() -> None:
     Handler.default_upsample_factor = max(1, int(args.upsample_factor))
     Handler.default_gaussian_sigma = max(0.0, float(args.gaussian_sigma))
     Handler.default_gaussian_radius = max(0, int(args.gaussian_radius))
+    Handler.default_hand_gaussian_sigma = max(0.0, float(args.hand_gaussian_sigma))
+    Handler.default_hand_gaussian_radius = max(0, int(args.hand_gaussian_radius))
+    Handler.default_hand_max_gap_frames = max(0, int(args.hand_max_gap_frames))
+    Handler.default_hand_fade_frames = max(0, int(args.hand_fade_frames))
+    Handler.default_skip_hand_flips = bool(args.skip_hand_flips)
+    Handler.default_hand_flip_orientation_threshold = max(
+        0.01,
+        min(0.95, float(args.hand_flip_orientation_threshold)),
+    )
+    Handler.default_repair_hand_topology = bool(args.repair_hand_topology)
     Handler.vosk_model_dir = vosk_model_dir
     Handler._vosk_model = None
 
@@ -362,7 +473,7 @@ def main() -> None:
         return Handler(*factory_args, directory=str(static_dir), **factory_kwargs)
 
     httpd, active_port = _start_server_on_available_port(args.host, int(args.port), _factory)
-    player_url = f"http://{args.host}:{active_port}/dataset_player.html?build=signing-avatar-2"
+    player_url = f"http://{args.host}:{active_port}/dataset_player.html?build=signing-avatar-26"
     if active_port != int(args.port):
         print(f"Port {args.port} is busy; using port {active_port} instead.")
     print(f"Serving pose-animator at {player_url}")

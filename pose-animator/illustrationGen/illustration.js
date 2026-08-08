@@ -24,12 +24,59 @@ const allPartNamesMap = {};
 allPartNames.forEach(name => allPartNamesMap[name] = 1);
 
 const MIN_CONFIDENCE_PATH_SCORE = 0.3;
+const MIN_HAND_SKINNING_DISTANCE = 0.75;
+const MAX_HAND_BONE_INFLUENCES = 4;
+const HAND_MIN_SCORE = 0.001;
+const HAND_FULL_DETAIL_SCORE = 0.75;
+const FLIP_HELD_DETAIL_FACTOR = 0.4;
+const NATIVE_HAND_PATH_PREFIXES = {
+    nativeLeftHand: 'left',
+    nativeRightHand: 'right',
+};
+const PROCEDURAL_HAND_GROUP_PREFIX = 'illustration_generated_';
+
+function getExplicitHandSide(path) {
+    const name = String(path && path.name ? path.name : '');
+    const prefix = Object.keys(NATIVE_HAND_PATH_PREFIXES).find(candidate => name.startsWith(candidate));
+    return prefix ? NATIVE_HAND_PATH_PREFIXES[prefix] : null;
+}
+
+function getProceduralHandSide(path) {
+    let item = path;
+    while (item) {
+        const name = String(item.name || '');
+        if (name.startsWith(`${PROCEDURAL_HAND_GROUP_PREFIX}left_hand`)) {
+            return 'left';
+        }
+        if (name.startsWith(`${PROCEDURAL_HAND_GROUP_PREFIX}right_hand`)) {
+            return 'right';
+        }
+        item = item.parent;
+    }
+    return null;
+}
+
+function getDetailedHandAlpha(hand) {
+    if (!hand || Number(hand.score || 0) < HAND_MIN_SCORE) return 0;
+    const visibleLandmarks = Array.isArray(hand.keypoints)
+        ? hand.keypoints.filter(kp => kp && kp.position && Number(kp.score || 0) > 0).length
+        : 0;
+    return visibleLandmarks >= 6 ? 1 : 0;
+}
 
 // Represents a skinned illustration.
 export class PoseIllustration {
     constructor(scope) {
         this.scope = scope;
         this.frames = [];
+        this.preferDetailedHands = true;
+        this.useProceduralHands = false;
+    }
+
+    hasProceduralHandRig() {
+        return ['left', 'right'].every(side => this.skinnedPaths.some(path => (
+            path.isProceduralHandPath && path.handSide === side
+        )));
     }
 
     updateSkeleton(pose, face, hands = null) {
@@ -73,8 +120,11 @@ export class PoseIllustration {
         let scope = this.scope;
         // Add paths
         this.skinnedPaths.forEach(skinnedPath => {
+            const detailedHand = skinnedPath.handSide && this.hands && this.hands[skinnedPath.handSide];
+            const detailedHandAlpha = this.preferDetailedHands ? getDetailedHandAlpha(detailedHand) : 0;
             // Do not render paths with low confidence scores.
-            if (!skinnedPath.confidenceScore || skinnedPath.confidenceScore < MIN_CONFIDENCE_PATH_SCORE) {
+            const minConfidence = skinnedPath.isHandPath ? 0.05 : MIN_CONFIDENCE_PATH_SCORE;
+            if (!skinnedPath.confidenceScore || skinnedPath.confidenceScore < minConfidence) {
                 return;
             }
             let path = new scope.Path({
@@ -83,6 +133,14 @@ export class PoseIllustration {
                 strokeWidth: skinnedPath.strokeWidth,
                 closed: skinnedPath.closed,
             });
+            if (skinnedPath.isHandPath) {
+                if (skinnedPath.isProceduralHandPath) {
+                    path.opacity = this.useProceduralHands ? detailedHandAlpha : 0;
+                } else {
+                    // Native hands stay opaque when detailed tracking is absent.
+                    path.opacity = detailedHandAlpha > 0 ? 0 : 1;
+                }
+            }
             skinnedPath.segments.forEach(seg => {
                 path.addSegment(seg.point.currentPosition, 
                     seg.handleIn ? seg.handleIn.currentPosition.subtract(seg.point.currentPosition) : null,
@@ -245,9 +303,13 @@ export class PoseIllustration {
     getWeights(point, bones) {
         let totalW = 0;
         let weights = {};
+        const handOnly = bones.length > 0 && bones.every(bone => bone.type === 'hand');
         bones.forEach(bone => {
             let d = MathUtils.getClosestPointOnSegment(bone.kp0.position, bone.kp1.position, point)
                 .getDistance(point);
+            // Procedural joints can lie exactly on several bones. Clamp the
+            // distance to prevent Infinity / Infinity during normalization.
+            d = Math.max(d, handOnly ? MIN_HAND_SKINNING_DISTANCE : 1e-4);
             // Absolute weight = 1 / (distance * distance)
             let w = 1 / (d * d);
             weights[bone.name] = {
@@ -259,6 +321,11 @@ export class PoseIllustration {
         let values = Object.values(weights).sort((v0, v1) => {
             return v1.value - v0.value;
         });
+        if (handOnly) {
+            // Keep each finger segment attached to its local chain instead of
+            // blending it with every bone in the palm and other fingers.
+            values = values.slice(0, MAX_HAND_BONE_INFLUENCES);
+        }
         weights = {};
         totalW = 0;
         values.forEach(v => {
@@ -303,12 +370,43 @@ export class PoseIllustration {
             }
             return segment;
         });
+        let handDominantSegments = 0;
+        const handSideWeights = { left: 0, right: 0 };
+        segs.forEach(segment => {
+            const skinningWeights = Object.values(segment.point.skinning);
+            const handWeight = skinningWeights.reduce((total, weight) => {
+                return total + (weight.bone.type === 'hand' ? Number(weight.weight || 0) : 0);
+            }, 0);
+            if (handWeight < 0.6) return;
+            handDominantSegments += 1;
+            skinningWeights.forEach(weight => {
+                if (weight.bone.type !== 'hand') return;
+                const partName = weight.bone && weight.bone.kp0 ? weight.bone.kp0.name : '';
+                if (partName.startsWith('leftHand')) {
+                    handSideWeights.left += Number(weight.weight || 0);
+                } else if (partName.startsWith('rightHand')) {
+                    handSideWeights.right += Number(weight.weight || 0);
+                }
+            });
+        });
+        const proceduralHandSide = getProceduralHandSide(path);
+        const explicitHandSide = getExplicitHandSide(path);
+        const isProceduralHandPath = proceduralHandSide !== null;
+        const isHandPath = explicitHandSide !== null || isProceduralHandPath
+            || (segs.length > 0 && handDominantSegments / segs.length >= 0.65);
+        let handSide = proceduralHandSide || explicitHandSide;
+        if (isHandPath && !handSide) {
+            handSide = handSideWeights.left >= handSideWeights.right ? 'left' : 'right';
+        }
         this.skinnedPaths.push({
             segments: segs,
             fillColor: path.fillColor,
             strokeColor: path.strokeColor,
             strokeWidth: path.strokeWidth,
-            closed: path.closed
+            closed: path.closed,
+            isHandPath: isHandPath,
+            isProceduralHandPath: isProceduralHandPath,
+            handSide: handSide,
         });
     }
 

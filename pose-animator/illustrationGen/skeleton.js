@@ -23,6 +23,9 @@ const paperLib = paper.default || paper;
 
 const MIN_POSE_SCORE = 0.1;
 const MIN_FACE_SCORE = 0.8;
+const HAND_FALLBACK_SCORE = 0.45;
+const HAND_FULL_DETAIL_SCORE = 0.75;
+const FLIP_HELD_DETAIL_FACTOR = 0.4;
 
 const posePartNames = ['leftAnkle', 'leftKnee', 'leftHip', 'leftWrist', 'leftElbow', 'leftShoulder', 
     'rightAnkle', 'rightKnee', 'rightHip', 'rightWrist', 'rightElbow', 'rightShoulder',
@@ -87,12 +90,6 @@ const handRestOffsets = [
     { forward: 1.30, spread: -1.14 },
     { forward: 1.62, spread: -1.20 },
 ];
-
-const HAND_FORWARD_BOOST = [1.0, 1.08, 1.18, 1.30, 1.44];
-const HAND_SPREAD_BOOST = [1.0, 1.26, 1.38, 1.50, 1.64];
-const THUMB_FORWARD_BOOST = [1.0, 1.12, 1.24, 1.38, 1.52];
-const THUMB_SPREAD_BOOST = [1.0, 1.72, 1.88, 2.02, 2.16];
-const HAND_OUTER_FINGER_SPREAD = [0.14, 0.02, 0.10, 0.22];
 
 // Mapping between face part names and their vertex indices in TF face mesh.
 export const facePartName2Index = {
@@ -313,30 +310,11 @@ function getPartFromHands(hands, name) {
     };
 }
 
-function boostHandPosition(landmarkIndex, rawPosition, wristAnchor, rawWrist, forwardAxis, spreadAxis) {
+function boostHandPosition(landmarkIndex, rawPosition, wristAnchor, rawWrist) {
     if (!rawPosition || landmarkIndex === 0) {
         return wristAnchor;
     }
-
-    const relative = rawPosition.subtract(rawWrist);
-    const forwardDistance = relative.dot(forwardAxis);
-    const spreadDistance = relative.dot(spreadAxis);
-
-    let forwardBoost = 1;
-    let spreadBoost = 1;
-    if (landmarkIndex >= 1 && landmarkIndex <= 4) {
-        forwardBoost = THUMB_FORWARD_BOOST[landmarkIndex];
-        spreadBoost = THUMB_SPREAD_BOOST[landmarkIndex];
-    } else if (landmarkIndex >= 5) {
-        const fingerIndex = Math.floor((landmarkIndex - 5) / 4);
-        const jointIndex = ((landmarkIndex - 5) % 4) + 1;
-        forwardBoost = HAND_FORWARD_BOOST[jointIndex];
-        spreadBoost = HAND_SPREAD_BOOST[jointIndex] + (HAND_OUTER_FINGER_SPREAD[fingerIndex] || 0);
-    }
-
-    return wristAnchor
-        .add(forwardAxis.multiply(forwardDistance * forwardBoost))
-        .add(spreadAxis.multiply(spreadDistance * spreadBoost));
+    return wristAnchor.add(rawPosition.subtract(rawWrist));
 }
 
 function getKeypointFromFaceFrame(face, i) {
@@ -741,26 +719,6 @@ export class Skeleton {
             const wristAnchor = this.parts[wristName].position;
             const rawWrist = rawParts[partNames[0]] && rawParts[partNames[0]].score > 0 ?
                 rawParts[partNames[0]].position : wristAnchor;
-            let forwardAxis = rawParts[partNames[9]] && rawParts[partNames[9]].score > 0 ?
-                rawParts[partNames[9]].position.subtract(rawWrist) :
-                wristAnchor.subtract(this.parts[elbowName].position);
-            if (!forwardAxis.length) {
-                forwardAxis = wristAnchor.subtract(this.parts[elbowName].position);
-            }
-            if (!forwardAxis.length) {
-                forwardAxis = new paperLib.Point(side === 'left' ? 1 : -1, 1);
-            }
-            forwardAxis = forwardAxis.normalize();
-            let spreadAxis = forwardAxis.clone();
-            spreadAxis.angle += side === 'left' ? -90 : 90;
-            const indexMCP = rawParts[partNames[5]];
-            const pinkyMCP = rawParts[partNames[17]];
-            if (indexMCP && indexMCP.score > 0 && pinkyMCP && pinkyMCP.score > 0) {
-                const palmSpan = pinkyMCP.position.subtract(indexMCP.position);
-                if (palmSpan.length && palmSpan.dot(spreadAxis) < 0) {
-                    spreadAxis = spreadAxis.multiply(-1);
-                }
-            }
 
             partNames.forEach((partName, landmarkIndex) => {
                 const part1 = getPartFromHands(hands, partName);
@@ -768,27 +726,26 @@ export class Skeleton {
                 if (!part1 || part1.score <= 0) {
                     this.parts[partName] = {
                         position: fallback.position,
-                        score: 0,
+                        score: HAND_FALLBACK_SCORE,
                     };
                     return;
                 }
 
-                const part0 = this.parts[partName] || fallback;
-                const totalScore = Math.max(1e-5, Number(part0.score || 0) + Number(part1.score || 0));
-                const weight0 = Number(part0.score || 0) / totalScore;
-                const weight1 = Number(part1.score || 0) / totalScore;
+                const handIsObserved = Boolean(hands && hands[side] && hands[side].observed && !hands[side].flipHeld);
+                const heldFactor = hands && hands[side] && hands[side].flipHeld ? FLIP_HELD_DETAIL_FACTOR : 1;
+                const effectiveScore = handIsObserved ? HAND_FULL_DETAIL_SCORE : Number(part1.score || 0) * heldFactor;
+                const detailT = Math.min(1, Math.max(0, effectiveScore) / HAND_FULL_DETAIL_SCORE);
+                const detailAlpha = detailT * detailT * (3 - 2 * detailT);
                 const boosted = boostHandPosition(
                     landmarkIndex,
                     part1.position,
                     wristAnchor,
-                    rawWrist,
-                    forwardAxis,
-                    spreadAxis
+                    rawWrist
                 );
-                const pos = part0.position.multiply(weight0).add(boosted.multiply(weight1));
+                const pos = fallback.position.multiply(1 - detailAlpha).add(boosted.multiply(detailAlpha));
                 this.parts[partName] = {
                     position: pos,
-                    score: Number(part0.score || 0) * weight0 + Number(part1.score || 0) * weight1,
+                    score: HAND_FALLBACK_SCORE * (1 - detailAlpha) + Number(part1.score || 0) * detailAlpha,
                 };
             });
         });
