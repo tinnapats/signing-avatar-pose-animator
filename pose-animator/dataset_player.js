@@ -536,8 +536,9 @@ function drawHandDetails(frame, side) {
     const palm = new canvasScope.Path({
       closed: true,
       fillColor: style.fill,
-      strokeColor: style.fill,
-      strokeWidth: 0.8,
+      strokeColor: style.stroke,
+      strokeWidth: 1.4,
+      strokeJoin: 'round',
     });
     HAND_PALM_IDS.forEach((landmarkId) => {
       palm.add(projected[landmarkId]);
@@ -558,7 +559,7 @@ function drawHandDetails(frame, side) {
   }, []);
 
   visibleConnections.forEach((connection) => {
-    drawHandStroke(group, connection.a, connection.b, style.fill, connection.width + 1.0);
+    drawHandStroke(group, connection.a, connection.b, style.stroke, connection.width + 2.0);
   });
   visibleConnections.forEach((connection) => {
     drawHandStroke(group, connection.a, connection.b, style.fill, connection.width);
