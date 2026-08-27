@@ -150,27 +150,20 @@
       </div>
 
       <div class="control-block">
-        <label>1b) Voice Input (Vosk EN)</label>
         <div class="control-row">
           <button id="micStartBtn" type="button">Start Mic</button>
           <button id="micStopBtn" type="button" disabled>Stop & Transcribe</button>
         </div>
       </div>
 
-      <div class="control-block">
-        <label for="sequenceFile">2) or Sequence JSON</label>
-        <input id="sequenceFile" type="file" accept=".json" />
-      </div>
+      <input id="sequenceFile" type="file" accept=".json" hidden />
 
       <div class="control-block">
         <label for="avatarSelect">3) Built-in Avatar <span style="font-weight: 400; color: #486581;">(signing build)</span></label>
         <select id="avatarSelect"></select>
       </div>
 
-      <div class="control-block">
-        <label for="avatarFile">or Drop / Upload SVG Avatar</label>
-        <input id="avatarFile" type="file" accept=".svg" />
-      </div>
+      <input id="avatarFile" type="file" accept=".svg" hidden />
 
       <div class="control-block">
         <div class="control-row">
