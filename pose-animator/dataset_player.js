@@ -962,7 +962,10 @@ async function stopMicCaptureAndTranscribe(trigger = 'manual') {
     if (!res.ok || !data.ok) {
       throw new Error(data.error || `HTTP ${res.status}`);
     }
-    const text = String(data.text || '').trim();
+    const text = String(data.text || '')
+      .replace(/[\-‐‑‒–—]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (text) {
       el.textPrompt.value = text;
       setStatus(`Voice recognized: "${text}". Generating...`);
