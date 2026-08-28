@@ -71,8 +71,8 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
     default_skip_hand_flips: bool = True
     default_hand_flip_orientation_threshold: float = 0.12
     default_repair_hand_topology: bool = False
-    vosk_model_dir: Path = Path("vosk-model-small-en-us-0.15")
-    _vosk_model = None
+    asr_model_id: str = "jonatasgrosman/wav2vec2-large-xlsr-53-english"
+    _asr_pipeline = None
 
     def end_headers(self) -> None:
         """Keep the local player in sync with the files being edited."""
@@ -92,8 +92,6 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def _handle_health(self) -> None:
-        model_dir = str(self.vosk_model_dir) if self.vosk_model_dir else ""
-        model_exists = bool(self.vosk_model_dir and self.vosk_model_dir.exists())
         data_dir_exists = self.data_dir.exists()
         self._send_json(
             HTTPStatus.OK,
@@ -102,33 +100,47 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
                 "dataDir": str(self.data_dir),
                 "dataDirExists": data_dir_exists,
                 "stt": {
-                    "engine": "vosk",
-                    "modelDir": model_dir,
-                    "modelExists": model_exists,
+                    "engine": "transformers",
+                    "model": self.asr_model_id,
+                    "loaded": self.__class__._asr_pipeline is not None,
                 },
             },
         )
 
-    def _get_vosk_model(self):
-        if self.__class__._vosk_model is not None:
-            return self.__class__._vosk_model
-
-        model_dir = self.vosk_model_dir
-        if not model_dir or not model_dir.exists():
-            raise RuntimeError(
-                f"Vosk model not found: {model_dir}. "
-                "Set --vosk-model-dir to a valid vosk model folder."
-            )
+    def _get_asr_pipeline(self):
+        if self.__class__._asr_pipeline is not None:
+            return self.__class__._asr_pipeline
 
         try:
-            from vosk import Model
+            from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, pipeline
         except Exception as exc:
             raise RuntimeError(
-                "Python package 'vosk' is not installed. Run: pip install vosk"
+                "XLSR-53 requires 'torch' and 'transformers'. "
+                "Run: pip install -r requirements.txt"
             ) from exc
 
-        self.__class__._vosk_model = Model(str(model_dir))
-        return self.__class__._vosk_model
+        try:
+            processor = Wav2Vec2Processor.from_pretrained(
+                self.asr_model_id,
+                local_files_only=True,
+            )
+            model = Wav2Vec2ForCTC.from_pretrained(
+                self.asr_model_id,
+                local_files_only=True,
+            )
+            self.__class__._asr_pipeline = pipeline(
+                "automatic-speech-recognition",
+                model=model,
+                tokenizer=processor.tokenizer,
+                feature_extractor=processor.feature_extractor,
+                device=-1,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Could not load cached XLSR-53 model '{self.asr_model_id}'. "
+                "Start the server once with internet access to download the model."
+            ) from exc
+        return self.__class__._asr_pipeline
 
     def _transcribe_wav_bytes(self, wav_bytes: bytes) -> str:
         if not wav_bytes:
@@ -152,27 +164,25 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
             if sample_rate < 8000:
                 raise ValueError(f"WAV sample rate too low: {sample_rate}.")
 
-            model = self._get_vosk_model()
-            from vosk import KaldiRecognizer
+            import numpy as np
 
-            recognizer = KaldiRecognizer(model, float(sample_rate))
-            recognizer.SetWords(False)
+            audio = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16).astype(np.float32)
+            if audio.size == 0:
+                raise ValueError("WAV contains no audio samples.")
+            audio /= 32768.0
+            target_sample_rate = 16_000
+            if sample_rate != target_sample_rate:
+                target_length = max(1, round(audio.size * target_sample_rate / sample_rate))
+                source_times = np.linspace(0, audio.size - 1, num=audio.size)
+                target_times = np.linspace(0, audio.size - 1, num=target_length)
+                audio = np.interp(target_times, source_times, audio).astype(np.float32)
 
-            segments = []
-            while True:
-                chunk = wf.readframes(4000)
-                if not chunk:
-                    break
-                if recognizer.AcceptWaveform(chunk):
-                    partial_text = str(json.loads(recognizer.Result()).get("text", "")).strip()
-                    if partial_text:
-                        segments.append(partial_text)
-
-            final_text = str(json.loads(recognizer.FinalResult()).get("text", "")).strip()
-            if final_text:
-                segments.append(final_text)
-
-            return " ".join(segments).strip()
+            result = self._get_asr_pipeline()(
+                {"raw": audio, "sampling_rate": target_sample_rate},
+                chunk_length_s=30,
+                stride_length_s=5,
+            )
+            return str(result.get("text", "")).strip()
 
     def _handle_transcribe_wav(self) -> None:
         content_length = _to_int(str(self.headers.get("Content-Length", "0")), 0)
@@ -402,7 +412,7 @@ def main() -> None:
     parser.add_argument("--static-dir", default="pose-animator-dist", help="Directory to serve as web root.")
     parser.add_argument(
         "--data-dir",
-        default=r"C:\งาน\project_1\project_1\SLclean\SLclean",
+        default=r"C:\pro1end\SLclean",
         help="CSV dataset root.",
     )
     parser.add_argument("--fps", type=float, default=30.0)
@@ -426,22 +436,15 @@ def main() -> None:
     parser.add_argument("--hand-flip-orientation-threshold", type=float, default=0.12)
     parser.add_argument("--repair-hand-topology", action="store_true")
     parser.add_argument(
-        "--vosk-model-dir",
-        type=str,
-        default="vosk-model-small-en-us-0.15",
-        help="Path to Vosk model folder (e.g. vosk-model-small-en-us-0.15).",
+        "--asr-model",
+        default="jonatasgrosman/wav2vec2-large-xlsr-53-english",
+        help="Hugging Face XLSR-53 speech-recognition model ID.",
     )
     args = parser.parse_args()
 
     base_dir = Path(__file__).resolve().parent
     static_dir = (base_dir / args.static_dir).resolve()
     data_dir = (base_dir / args.data_dir).resolve()
-    vosk_model_dir_arg = Path(str(args.vosk_model_dir))
-    if vosk_model_dir_arg.is_absolute():
-        vosk_model_dir = vosk_model_dir_arg.resolve()
-    else:
-        vosk_model_dir = (base_dir / vosk_model_dir_arg).resolve()
-
     if not static_dir.exists():
         raise SystemExit(f"Static directory not found: {static_dir}")
     class Handler(PoseAnimatorHandler):
@@ -466,8 +469,8 @@ def main() -> None:
         min(0.95, float(args.hand_flip_orientation_threshold)),
     )
     Handler.default_repair_hand_topology = bool(args.repair_hand_topology)
-    Handler.vosk_model_dir = vosk_model_dir
-    Handler._vosk_model = None
+    Handler.asr_model_id = str(args.asr_model)
+    Handler._asr_pipeline = None
 
     def _factory(*factory_args, **factory_kwargs):
         return Handler(*factory_args, directory=str(static_dir), **factory_kwargs)
@@ -478,8 +481,8 @@ def main() -> None:
         print(f"Port {args.port} is busy; using port {active_port} instead.")
     print(f"Serving pose-animator at {player_url}")
     print(f"API: http://{args.host}:{active_port}/api/generate_sequence?text=a")
-    print("API: POST /api/transcribe_wav (Content-Type: audio/wav, mono 16-bit PCM)")
-    print(f"Vosk model dir: {vosk_model_dir}")
+    print("API: POST /api/transcribe_wav (XLSR-53 English, mono 16-bit PCM WAV)")
+    print(f"ASR model: {Handler.asr_model_id}")
     print(f"Data dir: {data_dir}")
     if not data_dir.exists():
         print("Warning: CSV data directory was not found. The web player is available, but")
