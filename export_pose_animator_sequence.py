@@ -296,10 +296,18 @@ def select_from_text(text: str, clips: Dict[str, Path]) -> List[Path]:
         selected.append(exact[0])
         return selected
 
-    for token in text.split():
-        matches = normalized_index.get(token, [])
-        if matches:
-            selected.append(matches[0])
+    tokens = text.split()
+    index = 0
+    while index < len(tokens):
+        # Prefer the longest phrase starting at the current word.
+        for end in range(len(tokens), index, -1):
+            matches = normalized_index.get(" ".join(tokens[index:end]), [])
+            if matches:
+                selected.append(matches[0])
+                index = end
+                break
+        else:
+            index += 1
     return selected
 
 

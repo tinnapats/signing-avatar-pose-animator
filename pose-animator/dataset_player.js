@@ -1,3 +1,4 @@
+import { renderWordOutput, startWordPreview } from './word_preview.js';
 import * as paper from 'paper';
 
 import { SVGUtils } from './utils/svgUtils.js';
@@ -453,6 +454,18 @@ function getHipAnchor(pose) {
 }
 
 function applyWaistCameraFraming(pose) {
+  if (new URLSearchParams(location.search).has('previewWord')) {
+    const layer = canvasScope.project.activeLayer;
+    const bounds = layer.bounds;
+    if (bounds.width > 0 && bounds.height > 0) {
+      const size = canvasScope.view.viewSize;
+      const scale = Math.min((size.width - 32) / bounds.width, (size.height - 24) / bounds.height);
+      layer.scale(scale, bounds.center);
+      layer.translate(canvasScope.view.center.subtract(layer.bounds.center));
+    }
+    return;
+  }
+
   if (!canvasScope || !canvasScope.project || !canvasScope.project.activeLayer) return;
   const anchor = getHipAnchor(pose) || { x: CANVAS_WIDTH * 0.5, y: CANVAS_HEIGHT * 0.72 };
   const targetX = CANVAS_WIDTH * WAIST_CAMERA_TARGET_X;
@@ -980,8 +993,21 @@ async function stopMicCaptureAndTranscribe(trigger = 'manual') {
   }
 }
 
+function showWordOutput(payload) {
+  const clips = payload && payload.meta && payload.meta.sourceClips;
+  const words = Array.isArray(clips) ? clips.filter((clip) => typeof clip === 'string').map((clip) => {
+    const word = clip.split(/[\\/]/).pop()
+      .replace(/\.[^.]+$/, '').toLowerCase()
+      .replace(/[_-](?:holistic_)?keypoints$/, '')
+      .replace(/[_-]/g, ' ').trim();
+    return word === 'i' ? 'I' : word;
+  }).filter(Boolean) : [];
+  renderWordOutput(words);
+}
+
 function loadSequencePayload(payload) {
   sequence = normalizeSequence(payload);
+  showWordOutput(payload);
   handOverlayScales = {
     left: calculateHandOverlayScale(sequence, 'left'),
     right: calculateHandOverlayScale(sequence, 'right'),
@@ -1018,6 +1044,7 @@ async function onSequenceFileChange(event) {
     loadSequencePayload(parsed);
   } catch (err) {
     stopPlayback();
+    showWordOutput(null);
     setStatus(`Failed to load sequence: ${err.message}`);
   }
 }
@@ -1029,6 +1056,7 @@ async function onGenerateFromText() {
     return;
   }
   stopPlayback();
+  showWordOutput(null);
   setStatus('Generating sequence from text...');
   try {
     const url = `/api/generate_sequence?text=${encodeURIComponent(raw)}`;
@@ -1142,7 +1170,8 @@ async function init() {
   });
 
   await loadBuiltInAvatar(DEFAULT_AVATAR);
-  setStatus('Signing avatar loaded. Type text or load sequence JSON to start.');
+  await startWordPreview(onGenerateFromText, loadBuiltInAvatar, BUILTIN_AVATARS);
+  if (!new URLSearchParams(location.search).has('previewWord')) setStatus('Signing avatar loaded. Type text or load sequence JSON to start.');
   setMicButtons(false);
 }
 

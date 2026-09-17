@@ -1,217 +1,80 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-  <meta charset="utf-8" />
-  <title>Pose Animator - Dataset Player</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Tahoma, sans-serif;
-      background: #f4f6f8;
-      color: #1f2933;
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pose Animator</title>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f3f3f3; color: #242424; font: 14px "Segoe UI", Tahoma, sans-serif; }
+    button, input, select { font: inherit; }
+    .topbar { height: 56px; padding: 0 24px; display: flex; align-items: center; background: #fff; border-bottom: 1px solid #ddd; }
+    .topbar strong { font-size: 17px; font-weight: 600; }
+    .layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: calc(100dvh - 56px); }
+    .sidebar { padding: 24px; background: #fff; border-right: 1px solid #ddd; }
+    .panel { padding: 0 0 24px; margin: 0 0 24px; border-bottom: 1px solid #e5e5e5; }
+    .panel-title { margin: 0 0 16px; font-size: 14px; font-weight: 600; }
+    .control-block { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; margin-bottom: 8px; }
+    input[type=text], select { width: 100%; min-height: 40px; padding: 9px 10px; border: 1px solid #bbb; border-radius: 4px; background: #fff; color: #222; }
+    input::placeholder { color: #858585; }
+    .hint { color: #777; font-size: 11px; margin: 8px 0 14px; line-height: 1.6; }
+    button { min-height: 38px; border: 1px solid #c8c8c8; border-radius: 4px; padding: 8px 10px; background: #fafafa; color: #222; cursor: pointer; font-size: 12px; }
+    button:hover:not(:disabled) { background: #eee; border-color: #999; }
+    button:disabled { color: #999; background: #f7f7f7; cursor: not-allowed; }
+    #generateBtn { width: 100%; background: #303030; color: #fff; border-color: #303030; font-size: 13px; }
+    #generateBtn:hover:not(:disabled) { background: #111; }
+    .control-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .control-inline { display: grid; grid-template-columns: 46px 1fr 42px; gap: 8px; align-items: center; margin-top: 18px; }
+    .control-inline label { margin: 0; }
+    #speedLabel { font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+    input[type=range] { width: 100%; margin: 0; accent-color: #444; cursor: pointer; }
+    input[type=checkbox] { margin: 0; width: 14px; height: 14px; accent-color: #444; }
+    .toggle-label { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; cursor: pointer; }
+    .details { color: #666; font-size: 11px; }
+    summary { cursor: pointer; padding: 4px 0; }
+    .file-option { margin-top: 14px; font-size: 11px; }
+    .file-option input { display: block; max-width: 100%; margin-top: 6px; font-size: 11px; }
+    .status { color: #666; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; margin: 16px 0 0; }
+    .viewer { min-width: 0; padding: 24px; }
+    .avatar-output-card { width: 100%; max-width: 1050px; margin: 0 auto; background: #fff; border: 1px solid #ddd; }
+    .stage { display: grid; place-items: center; }
+    .canvas-wrap { width: min(100%, max(240px, calc(100dvh - 192px)), 820px); aspect-ratio: 1; overflow: hidden; }
+    .illustration-canvas { display: block; width: 100%; height: 100%; }
+    .output-area { border-top: 1px solid #ddd; display: flex; gap: 16px; align-items: baseline; padding: 18px 24px; min-height: 65px; }
+    .output-heading { font-size: 13px; color: #666; flex-shrink: 0; }
+    .output-heading strong { font-weight: 600; }
+    #wordOutput { font-size: 21px; line-height: 1.5; overflow-wrap: anywhere; min-width: 0; }
+    button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid #376fab; outline-offset: 3px; }
+    @media (max-width: 760px) {
+      .topbar { padding: 0 16px; }
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { padding: 20px 16px; border-right: 0; border-bottom: 1px solid #ddd; }
+      .panel { margin-bottom: 20px; padding-bottom: 20px; }
+      .viewer { padding: 16px; }
+      .canvas-wrap { width: min(100%, 560px); }
+      .output-area { padding: 16px; gap: 12px; }
+      #wordOutput { font-size: 18px; }
     }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 340px 1fr;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      padding: 20px;
-      border-right: 1px solid #d9e2ec;
-      background: #ffffff;
-    }
-
-    .sidebar h1 {
-      margin: 0 0 8px 0;
-      font-size: 20px;
-    }
-
-    .sidebar p {
-      margin: 0 0 16px 0;
-      color: #52606d;
-      font-size: 13px;
-      line-height: 1.4;
-    }
-
-    .control-block {
-      margin-bottom: 14px;
-    }
-
-    .control-block label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      color: #334e68;
-    }
-
-    .control-block input,
-    .control-block select,
-    .control-block button {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 8px 10px;
-      border: 1px solid #bcccdc;
-      border-radius: 8px;
-      background: #fff;
-      font-size: 13px;
-    }
-
-    .control-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .control-inline {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      align-items: center;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .toggle-label {
-      display: flex !important;
-      align-items: center;
-      gap: 8px;
-      font-weight: 500 !important;
-      cursor: pointer;
-    }
-
-    .control-block .toggle-label input {
-      width: auto;
-      margin: 0;
-    }
-
-    .status {
-      margin-top: 10px;
-      font-size: 12px;
-      color: #486581;
-      background: #f0f4f8;
-      border: 1px solid #d9e2ec;
-      border-radius: 8px;
-      padding: 8px 10px;
-      min-height: 34px;
-    }
-
-    .viewer {
-      display: grid;
-      place-items: center;
-      padding: 20px;
-    }
-
-    .canvas-wrap {
-      width: min(92vw, 860px);
-      aspect-ratio: 1 / 1;
-      max-height: calc(100vh - 48px);
-      background: #fff;
-      border: 1px solid #d9e2ec;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
-      display: grid;
-      place-items: center;
-    }
-
-    .illustration-canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    @media (max-width: 980px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar {
-        border-right: 0;
-        border-bottom: 1px solid #d9e2ec;
-      }
-    }
-  </style>
-  <script type="importmap">
-    {
-      "imports": {
-        "paper": "./paper-global.js"
-      }
-    }
-  </script>
-  <script type="module" crossorigin src="./assets/dataset_player-vAIyJp1k.js"></script>
+</style>
+<script type="importmap">{"imports":{"paper":"./paper-global.js"}}</script>
+  <script type="module" crossorigin src="./assets/dataset_player-BbkKGIyZ.js"></script>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar">
-      <h1>Pose Animator Dataset Player</h1>
-      <p>Official pose-animator runtime with text input (old workflow) and JSON upload.</p>
+<header class="topbar"><strong>Pose Animator</strong></header>
+<div class="layout">
+<aside class="sidebar">
 
-      <div class="control-block">
-        <label for="textPrompt">1) Type Text (old mode)</label>
-        <input id="textPrompt" type="text" placeholder="e.g. hello thank you" />
-      </div>
+<section class="panel input-panel"><h2 class="panel-title">ข้อความ</h2>
+<div class="control-block"><label for="textPrompt">ข้อความภาษาอังกฤษ</label><input id="textPrompt" type="text" placeholder="เช่น you go high school" autocomplete="off" /><p class="hint">กด Enter หรือ Generate เพื่อแสดงท่าทาง</p><button id="generateBtn" type="button">Generate From Text</button></div>
+<div class="control-row"><button id="micStartBtn" type="button">Start Mic</button><button id="micStopBtn" type="button" disabled>Stop & Transcribe</button></div>
+</section>
+<section class="panel playback-panel"><h2 class="panel-title">การแสดงผล</h2><div class="control-block"><label for="avatarSelect">เลือกอวตาร</label><select id="avatarSelect"></select></div><div class="control-block"><div class="control-row"><button id="playBtn" type="button">Play</button><button id="resetBtn" type="button">Reset</button></div><div class="control-inline"><label for="speed">ความเร็ว</label><input id="speed" type="range" min="0.25" max="2" step="0.05" value="1" /><span id="speedLabel">1.00x</span></div></div><div class="control-block"><label for="frameSlider">ตำแหน่งการเล่น</label><input id="frameSlider" type="range" min="0" max="0" value="0" /></div><label class="toggle-label"><input id="loopCheck" type="checkbox" />เล่นวนซ้ำ (Loop)</label><label class="toggle-label"><input id="handOverlayCheck" type="checkbox" checked />แสดงรายละเอียดมือ</label></section>
+<details class="details"><summary>ข้อมูลการทำงานและไฟล์เพิ่มเติม</summary><label class="file-option">โหลดลำดับท่าทาง<input id="sequenceFile" type="file" accept=".json" /></label><label class="file-option">โหลดอวตาร SVG<input id="avatarFile" type="file" accept=".svg" /></label></details>
+<div id="status" class="status" role="status">พร้อมเริ่มต้น พิมพ์ข้อความเพื่อสร้างท่าทาง</div>
+</aside>
+<main class="viewer"><div class="avatar-output-card"><div class="stage"><div class="canvas-wrap"><canvas class="illustration-canvas" aria-label="ภาพเคลื่อนไหวอวตารภาษามือ"></canvas></div></div><section class="output-area" aria-label="Output"><div class="output-heading"><strong>Output:</strong></div><div id="wordOutput" aria-live="polite">—</div></section></div></main>
+</div>
 
-      <div class="control-block">
-        <button id="generateBtn" type="button">Generate From Text</button>
-      </div>
-
-      <div class="control-block">
-        <div class="control-row">
-          <button id="micStartBtn" type="button">Start Mic</button>
-          <button id="micStopBtn" type="button" disabled>Stop & Transcribe</button>
-        </div>
-      </div>
-
-      <input id="sequenceFile" type="file" accept=".json" hidden />
-
-      <div class="control-block">
-        <label for="avatarSelect">3) Built-in Avatar <span style="font-weight: 400; color: #486581;">(signing build)</span></label>
-        <select id="avatarSelect"></select>
-      </div>
-
-      <input id="avatarFile" type="file" accept=".svg" hidden />
-
-      <div class="control-block">
-        <div class="control-row">
-          <button id="playBtn" type="button">Play</button>
-          <button id="resetBtn" type="button">Reset</button>
-        </div>
-        <div class="control-inline">
-          <label for="speed" style="margin: 0;">Speed</label>
-          <input id="speed" type="range" min="0.25" max="2" step="0.05" value="1" />
-          <span id="speedLabel">1.00x</span>
-        </div>
-      </div>
-
-      <div class="control-block">
-        <label for="frameSlider">Frame</label>
-        <input id="frameSlider" type="range" min="0" max="0" value="0" />
-      </div>
-
-      <div class="control-block">
-        <label class="toggle-label">
-          <input id="loopCheck" type="checkbox" checked />
-          Loop
-        </label>
-        <label class="toggle-label" style="margin-top: 8px;">
-          <input id="handOverlayCheck" type="checkbox" checked />
-          Detailed articulated hands
-        </label>
-      </div>
-
-      <div id="status" class="status">Load sequence JSON to start.</div>
-    </aside>
-
-    <main class="viewer">
-      <div class="canvas-wrap">
-        <canvas class="illustration-canvas"></canvas>
-      </div>
-    </main>
-  </div>
-
-
-  <script src="./vendor/paper-full.min.js"></script>
-</body>
-</html>
+<script src="./vendor/paper-full.min.js"></script>
+</body></html>
