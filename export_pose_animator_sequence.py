@@ -479,7 +479,7 @@ def concat_clips(
     seq_parts: List[pd.DataFrame] = []
     frame_offset = 0
 
-    for path in paths:
+    for clip_index, path in enumerate(paths):
         clip = load_clip(path, width, height, target_fps=target_fps)
         if clip.empty:
             continue
@@ -487,6 +487,7 @@ def concat_clips(
         clip = clip.sort_values(["frame", "part", "landmark_id"]).reset_index(drop=True)
         clip["frame"] = clip["frame"] - int(clip["frame"].min())
         clip["frame"] = clip["frame"] + frame_offset
+        clip["sourceClipIndex"] = clip_index
         seq_parts.append(clip)
 
         last_frame = int(clip["frame"].max())
@@ -633,6 +634,7 @@ def build_frames(seq_df: pd.DataFrame, width: int, height: int, max_frames: int)
         frames.append(
             {
                 "frame": int(frame_idx),
+                "sourceClipIndex": int(frame_df["sourceClipIndex"].iloc[0]) if "sourceClipIndex" in frame_df else None,
                 "pose": {
                     "score": pose_score,
                     "keypoints": keypoints,
@@ -880,6 +882,7 @@ def interpolate_frames(
             out.append(
                 {
                     "frame": 0,
+                    "sourceClipIndex": f0.get("sourceClipIndex"),
                     "pose": {
                         "score": _lerp(float(f0["pose"]["score"]), float(f1["pose"]["score"]), t),
                         "keypoints": interp_keypoints,

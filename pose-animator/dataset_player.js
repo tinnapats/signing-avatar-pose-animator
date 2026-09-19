@@ -1,4 +1,4 @@
-import { renderWordOutput, startWordPreview } from './word_preview.js';
+import { renderWordOutput, startWordPreview, highlightOutputWord } from './word_preview.js';
 import * as paper from 'paper';
 
 import { SVGUtils } from './utils/svgUtils.js';
@@ -109,15 +109,25 @@ const el = {
   status: null,
 };
 
+function setMicFeedback(message = '') {
+  const label = document.getElementById('micFeedback');
+  if (label) {
+    label.textContent = message;
+    label.hidden = !message;
+  }
+}
+
 function setStatus(message) {
   if (el.status) {
     el.status.textContent = message;
   }
 }
 
+let micModelReady = false;
+let micHasBeenUsed = false;
 function setMicButtons(recording) {
   if (!el.micStartBtn || !el.micStopBtn) return;
-  el.micStartBtn.disabled = !!recording;
+  el.micStartBtn.disabled = !!recording || !micModelReady || micStopping;
   el.micStopBtn.disabled = !recording;
 }
 
@@ -592,6 +602,7 @@ function renderFrame(frameIndex) {
   if (frameIndex < 0 || frameIndex >= sequence.frames.length) return;
 
   const frame = sequence.frames[frameIndex];
+  highlightOutputWord(frame?.sourceClipIndex);
   if (!frame || !frame.pose) return;
 
   skeleton.reset();
@@ -866,7 +877,7 @@ async function cleanupMicCapture() {
 }
 
 async function startMicCapture() {
-  if (isMicRecording || micStopping) return;
+  if (!micModelReady || isMicRecording || micStopping) return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     setStatus('Microphone is not supported in this browser.');
     return;
@@ -932,7 +943,14 @@ async function startMicCapture() {
     micSourceNode.connect(micProcessorNode);
     micProcessorNode.connect(micAudioCtx.destination);
 
+    micHasBeenUsed = true;
+    const modelStatus = document.getElementById('micModelStatus');
+    if (modelStatus) {
+      modelStatus.hidden = true;
+      modelStatus.textContent = '';
+    }
     setMicButtons(true);
+    setMicFeedback('กำลังฟัง…');
     setStatus('Listening... it will auto-stop after you finish speaking.');
   } catch (err) {
     await cleanupMicCapture();
@@ -944,6 +962,7 @@ async function stopMicCaptureAndTranscribe(trigger = 'manual') {
   if (micStopping) return;
   if (!isMicRecording) return;
 
+  setMicFeedback();
   micStopping = true;
   isMicRecording = false;
   setMicButtons(false);
@@ -1050,6 +1069,7 @@ async function onSequenceFileChange(event) {
 }
 
 async function onGenerateFromText() {
+  setMicFeedback();
   const raw = (el.textPrompt.value || '').trim();
   if (!raw) {
     setStatus('Type text first.');
@@ -1068,6 +1088,9 @@ async function onGenerateFromText() {
     loadSequencePayload(data.payload);
     startPlayback();
   } catch (err) {
+    setMicFeedback(String(err.message).startsWith('No clips selected')
+      ? 'ไม่พบคำที่ต้องการ'
+      : '');
     setStatus(`Generate failed: ${err.message}`);
   }
 }
@@ -1084,7 +1107,27 @@ async function onAvatarFileChange(event) {
   }
 }
 
+async function pollMicReadiness() {
+  const label = document.getElementById('micModelStatus');
+  try {
+    const response = await fetch('/api/health', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Server unavailable');
+    const { stt } = await response.json();
+    micModelReady = stt?.state === 'ready';
+    if (label) label.textContent = micModelReady ? 'Mic is ready'
+      : stt?.state === 'error' ? 'เตรียมโมเดลเสียงไม่สำเร็จ: ' + (stt.error || 'กรุณาเปิดเซิร์ฟเวอร์ใหม่')
+      : 'loading model...';
+  } catch {
+    micModelReady = false;
+    if (label) label.textContent = 'กำลังรอเชื่อมต่อเซิร์ฟเวอร์เสียง…';
+  }
+  setMicButtons(isMicRecording);
+  if (label && micHasBeenUsed) { label.hidden = true; label.textContent = ''; }
+  setTimeout(pollMicReadiness, micModelReady ? 10000 : 1500);
+}
+
 async function init() {
+  void pollMicReadiness();
   el.textPrompt = document.getElementById('textPrompt');
   el.generateBtn = document.getElementById('generateBtn');
   el.micStartBtn = document.getElementById('micStartBtn');

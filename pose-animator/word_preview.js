@@ -5,6 +5,7 @@ const styles = document.createElement('style');
 styles.textContent = `
 .output-word { border:0; border-bottom:1px dotted #888; border-radius:0; padding:2px 3px; min-height:32px; background:transparent; font:inherit; color:inherit; cursor:pointer; }
 .output-word:hover,.output-word:focus-visible { background:#eee; border-bottom-color:#222; }
+.output-word.is-current,.output-word.is-current:hover,.output-word.is-current:focus-visible { background:#dbeafe; color:#1e40af; border-bottom:3px solid #2563eb; border-radius:4px; font-weight:700; }
 .word-popup { position:fixed; z-index:100; width:320px; max-width:calc(100vw - 16px); background:white; border:1px solid #bbb; border-radius:6px; box-shadow:0 6px 24px #0002; overflow:hidden; }
 .word-popup[hidden] { display:none; }
 .word-popup-header { display:flex; align-items:center; justify-content:space-between; padding:6px 12px; border-bottom:1px solid #ddd; font-size:14px; }
@@ -66,7 +67,25 @@ function openPopup(button, word) {
   url.searchParams.set('previewAvatar', document.getElementById('avatarSelect').value);
   frame.src = url.href;
 }
+let outputButtons = [];
+let highlightedIndex = null;
+export function highlightOutputWord(index) {
+  const next = Number.isInteger(index) && index >= 0 && index < outputButtons.length ? index : null;
+  if (next === highlightedIndex) return;
+  if (highlightedIndex !== null && outputButtons[highlightedIndex]) {
+    outputButtons[highlightedIndex].classList.remove('is-current');
+    outputButtons[highlightedIndex].removeAttribute('aria-current');
+  }
+  highlightedIndex = next;
+  if (next !== null) {
+    outputButtons[next].classList.add('is-current');
+    outputButtons[next].setAttribute('aria-current', 'true');
+  }
+}
+
 export function renderWordOutput(words) {
+  outputButtons = [];
+  highlightedIndex = null;
   closePopup();
   const output = document.getElementById('wordOutput'); output.replaceChildren();
   if (!words.length || previewWord) { output.textContent = words.join(' → ') || '—'; return; }
@@ -81,6 +100,7 @@ export function renderWordOutput(words) {
     button.addEventListener('mouseleave', () => { clearTimeout(showTimer); scheduleClose(); });
     button.addEventListener('blur', () => { clearTimeout(showTimer); scheduleClose(); });
     button.addEventListener('click', () => openPopup(button, word));
+    outputButtons.push(button);
     output.appendChild(button);
   });
 }

@@ -1,6 +1,7 @@
 import argparse
 import io
 import json
+import threading
 import wave
 import webbrowser
 from http import HTTPStatus
@@ -73,6 +74,9 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
     default_repair_hand_topology: bool = False
     asr_model_id: str = "jonatasgrosman/wav2vec2-large-xlsr-53-english"
     _asr_pipeline = None
+    _asr_lock = threading.Lock()
+    _asr_state = 'loading'
+    _asr_error = None
 
     def end_headers(self) -> None:
         """Keep the local player in sync with the files being edited."""
@@ -102,14 +106,17 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
                 "stt": {
                     "engine": "transformers",
                     "model": self.asr_model_id,
-                    "loaded": self.__class__._asr_pipeline is not None,
+                    "loaded": self.__class__._asr_state == "ready",
+                    "state": self.__class__._asr_state,
+                    "error": self.__class__._asr_error,
                 },
             },
         )
 
-    def _get_asr_pipeline(self):
-        if self.__class__._asr_pipeline is not None:
-            return self.__class__._asr_pipeline
+    @classmethod
+    def _load_asr_pipeline(cls):
+        if cls._asr_pipeline is not None:
+            return cls._asr_pipeline
 
         try:
             from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, pipeline
@@ -121,14 +128,14 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
 
         try:
             processor = Wav2Vec2Processor.from_pretrained(
-                self.asr_model_id,
+                cls.asr_model_id,
                 local_files_only=True,
             )
             model = Wav2Vec2ForCTC.from_pretrained(
-                self.asr_model_id,
+                cls.asr_model_id,
                 local_files_only=True,
             )
-            self.__class__._asr_pipeline = pipeline(
+            cls._asr_pipeline = pipeline(
                 "automatic-speech-recognition",
                 model=model,
                 tokenizer=processor.tokenizer,
@@ -137,10 +144,42 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
             )
         except Exception as exc:
             raise RuntimeError(
-                f"Could not load cached XLSR-53 model '{self.asr_model_id}'. "
+                f"Could not load cached XLSR-53 model '{cls.asr_model_id}'. "
                 "Start the server once with internet access to download the model."
             ) from exc
-        return self.__class__._asr_pipeline
+        return cls._asr_pipeline
+
+    @classmethod
+    def _get_asr_pipeline(cls):
+        with cls._asr_lock:
+            if cls._asr_state == "ready":
+                return cls._asr_pipeline
+            if cls._asr_state == "error":
+                raise RuntimeError(cls._asr_error)
+            try:
+                cls._asr_state = "loading"
+                recognizer = cls._load_asr_pipeline()
+                import numpy as np
+                recognizer(
+                    {"raw": np.zeros(16000, dtype=np.float32), "sampling_rate": 16000},
+                    chunk_length_s=30,
+                    stride_length_s=5,
+                )
+                cls._asr_state = "ready"
+                return recognizer
+            except Exception as exc:
+                cls._asr_pipeline = None
+                cls._asr_error = str(exc)
+                cls._asr_state = "error"
+                raise
+
+    @classmethod
+    def _preload_asr(cls):
+        try:
+            cls._get_asr_pipeline()
+            print("Speech model ready.", flush=True)
+        except Exception as exc:
+            print(f"Speech model preparation failed: {exc}", flush=True)
 
     def _transcribe_wav_bytes(self, wav_bytes: bytes) -> str:
         if not wav_bytes:
@@ -412,7 +451,7 @@ def main() -> None:
     parser.add_argument("--static-dir", default="pose-animator-dist", help="Directory to serve as web root.")
     parser.add_argument(
         "--data-dir",
-        default=r"C:\pro1end\SLclean",
+        default=r"C:\งาน\project_1\project_1\SLclean\SLclean",
         help="CSV dataset root.",
     )
     parser.add_argument("--fps", type=float, default=30.0)
@@ -487,6 +526,7 @@ def main() -> None:
     if not data_dir.exists():
         print("Warning: CSV data directory was not found. The web player is available, but")
         print("         /api/generate_sequence will need --data-dir pointing to your CSV clips.")
+    threading.Thread(target=Handler._preload_asr, daemon=True, name="asr-preload").start()
     if args.open_browser:
         webbrowser.open(player_url, new=2)
     try:

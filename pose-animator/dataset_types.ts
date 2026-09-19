@@ -15,6 +15,7 @@ export interface NormalizedHand { score: number; keypoints: HandKeypoint[]; obse
 export interface NormalizedSequence {
   meta: { fps: number; canvasWidth: number; canvasHeight: number };
   frames: Array<{
+    sourceClipIndex: number | null;
     pose: { score: number; keypoints: PoseKeypoint[] };
     face: { faceInViewConfidence: number; positions: number[] } | null;
     hands: { left: NormalizedHand | null; right: NormalizedHand | null };
@@ -90,6 +91,7 @@ export function normalizeSequence(value: unknown, canvasWidth = 513, canvasHeigh
     if (!pose) return;
     const hands = record(frame.hands);
     frames.push({
+      sourceClipIndex: typeof frame.sourceClipIndex === 'number' && Number.isInteger(frame.sourceClipIndex) && frame.sourceClipIndex >= 0 ? frame.sourceClipIndex : null,
       pose,
       face: normalizeFace(frame.face),
       hands: {
