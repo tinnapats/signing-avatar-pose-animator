@@ -103,6 +103,7 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
                 "ok": True,
                 "dataDir": str(self.data_dir),
                 "dataDirExists": data_dir_exists,
+                "storage": "sqlite" if self.data_dir.is_file() else "csv",
                 "stt": {
                     "engine": "transformers",
                     "model": self.asr_model_id,
@@ -451,8 +452,8 @@ def main() -> None:
     parser.add_argument("--static-dir", default="pose-animator-dist", help="Directory to serve as web root.")
     parser.add_argument(
         "--data-dir",
-        default=r"C:\งาน\project_1\project_1\SLclean\SLclean",
-        help="CSV dataset root.",
+        default=r"C:\pro1end\SLclean.sqlite3",
+        help="SQLite clip database or CSV dataset directory.",
     )
     parser.add_argument("--fps", type=float, default=30.0)
     parser.add_argument("--width", type=int, default=513)

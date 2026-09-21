@@ -21,3 +21,8 @@ vosk-model-small-en-us-0.15.zip
 # Generated animation data
 pose-animator/resources/data/my_sequence.json
 pose-animator/resources/data/_tmp_*.json
+
+# Private SQLite dataset and import files
+*.sqlite3
+*.sqlite3-*
+*.sqlite3.importing*

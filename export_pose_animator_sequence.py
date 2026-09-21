@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pandas as pd
+from clip_database import database_clips, read_clip_csv
 
 POSE_PART_ORDER: List[Tuple[str, int]] = [
     ("nose", 0),
@@ -246,6 +247,8 @@ def normalize_name(name: str) -> str:
 
 
 def discover_clips(data_dir: Path) -> Dict[str, Path]:
+    if data_dir.is_file():
+        return database_clips(data_dir)
     out: Dict[str, Path] = {}
     if not data_dir.exists():
         return out
@@ -427,7 +430,7 @@ def load_clip(
     height: int,
     target_fps: float | None = None,
 ) -> pd.DataFrame:
-    df = pd.read_csv(path, usecols=lambda column: column in EXPECTED_COLS + OPTIONAL_COORD_COLS)
+    df = read_clip_csv(path, usecols=lambda column: column in EXPECTED_COLS + OPTIONAL_COORD_COLS)
     missing_cols = [column for column in EXPECTED_COLS if column not in df.columns]
     if missing_cols:
         raise ValueError(f"CSV is missing required columns {missing_cols}: {path}")
@@ -1880,7 +1883,7 @@ def build_payload(
 
     source_frame_rates: List[float | None] = []
     for path in selected_paths:
-        timing_df = pd.read_csv(
+        timing_df = read_clip_csv(
             path,
             usecols=lambda column: column in {"frame", "time_sec"},
         )
