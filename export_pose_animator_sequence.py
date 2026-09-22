@@ -3,6 +3,7 @@ import bisect
 import json
 import math
 import statistics
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -284,14 +285,29 @@ def resolve_file_token(token: str, clips: Dict[str, Path], data_dir: Path) -> Pa
     raise ValueError(f"Could not resolve file token '{token}'")
 
 
+def normalize_search_text(text: str) -> str:
+    text = (text or "").lower().replace("’", "'")
+    cleaned = []
+    for index, char in enumerate(text):
+        # Keep apostrophes within words (don't), but remove surrounding quotes.
+        internal_apostrophe = (
+            char == "'" and 0 < index < len(text) - 1
+            and text[index - 1].isalnum() and text[index + 1].isalnum()
+        )
+        cleaned.append(" " if unicodedata.category(char).startswith("P")
+                       and not internal_apostrophe else char)
+    return " ".join("".join(cleaned).split())
+
+
 def select_from_text(text: str, clips: Dict[str, Path]) -> List[Path]:
-    text = (text or "").strip().lower()
+    text = normalize_search_text(text)
     if not text:
         return []
 
     normalized_index: Dict[str, List[Path]] = {}
     for key, path in clips.items():
-        normalized_index.setdefault(normalize_name(Path(key).name), []).append(path)
+        label = normalize_search_text(normalize_name(Path(key).name))
+        normalized_index.setdefault(label, []).append(path)
 
     selected: List[Path] = []
     exact = normalized_index.get(text, [])
