@@ -970,16 +970,16 @@ async function stopMicCaptureAndTranscribe(trigger = 'manual') {
     setStatus('Transcribing speech...');
   }
 
-  const inputRate = micAudioCtx ? Math.floor(micAudioCtx.sampleRate || 48000) : 48000;
-  const captured = mergeFloat32Chunks(micChunks);
-  await cleanupMicCapture();
-
-  if (!captured.length) {
-    setStatus('No audio captured.');
-    return;
-  }
-
   try {
+    const inputRate = micAudioCtx ? Math.floor(micAudioCtx.sampleRate || 48000) : 48000;
+    const captured = mergeFloat32Chunks(micChunks);
+    await cleanupMicCapture();
+
+    if (!captured.length) {
+      setStatus('No audio captured. Please press Start Mic and try again.');
+      return;
+    }
+
     const targetRate = 16000;
     const downsampled = downsampleBuffer(captured, inputRate, targetRate);
     const wavBuffer = encodeWavPcm16(downsampled, targetRate);
@@ -1009,6 +1009,7 @@ async function stopMicCaptureAndTranscribe(trigger = 'manual') {
     setStatus(`Transcription failed: ${err.message}`);
   } finally {
     micStopping = false;
+    setMicButtons(false);
   }
 }
 
