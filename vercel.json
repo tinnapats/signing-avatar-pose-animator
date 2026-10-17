@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci --prefix frontend-tooling",
+  "buildCommand": "npm run build --prefix frontend-tooling",
+  "outputDirectory": "pose-animator-dist",
+  "rewrites": [{ "source": "/", "destination": "/dataset_player.html" }],
+  "headers": [{
+    "source": "/(.*)",
+    "headers": [
+      { "key": "X-Content-Type-Options", "value": "nosniff" },
+      { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+    ]
+  }]
+}

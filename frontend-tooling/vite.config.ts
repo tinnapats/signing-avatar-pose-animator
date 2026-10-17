@@ -7,6 +7,7 @@ const outputDir = fileURLToPath(new URL('../pose-animator-dist/', import.meta.ur
 
 export default defineConfig({
   root: projectRoot,
+  envDir: fileURLToPath(new URL('../', import.meta.url)),
   base: './',
   publicDir: false,
   resolve: { alias: { paper: fileURLToPath(new URL('../pose-animator/paper-global.js', import.meta.url)) } },

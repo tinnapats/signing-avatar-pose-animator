@@ -1,0 +1,12 @@
+.git
+.venv
+node_modules
+frontend-tooling/node_modules
+SLclean
+*.sqlite3*
+comparison_models
+*.log
+__pycache__
+tests
+.deployment-tools
+frontend-tooling/pnpm-lock.yaml

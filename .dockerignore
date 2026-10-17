@@ -1,0 +1,8 @@
+**
+!requirements-cloud.txt
+!export_pose_animator_sequence.py
+!clip_database.py
+!pose_comparison.py
+!setup_comparison.py
+!run_pose_animator_server.py
+!cloud_backend.py

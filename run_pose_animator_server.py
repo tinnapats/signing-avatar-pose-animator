@@ -430,6 +430,19 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/api/compare_pose":
+            try:
+                size = int(self.headers.get('Content-Length', '0'))
+                if not 0 < size <= 12_000_000:
+                    raise ValueError('Comparison request must be under 12 MB.')
+                from pose_comparison import compare_request
+                result = compare_request(self.data_dir, json.loads(self.rfile.read(size)))
+                self._send_json(HTTPStatus.OK, result)
+            except (ValueError, KeyError, TypeError) as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {'ok': False, 'error': str(exc)})
+            except Exception as exc:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {'ok': False, 'error': str(exc)})
+            return
         if parsed.path == "/api/transcribe_wav":
             self._handle_transcribe_wav()
             return

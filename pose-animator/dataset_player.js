@@ -1,4 +1,6 @@
 import { renderWordOutput, startWordPreview, highlightOutputWord } from './word_preview.js';
+import { installComparison } from './pose_comparison.js';
+import { apiUrl, showConnectionState } from './api.js';
 import * as paper from 'paper';
 
 import { SVGUtils } from './utils/svgUtils.js';
@@ -72,6 +74,7 @@ let canvasScope = null;
 let skeleton = null;
 let illustration = null;
 let sequence = null;
+let comparisonClips = [];
 let currentFrame = 0;
 let playing = false;
 let rafId = null;
@@ -983,7 +986,7 @@ async function stopMicCaptureAndTranscribe(trigger = 'manual') {
     const targetRate = 16000;
     const downsampled = downsampleBuffer(captured, inputRate, targetRate);
     const wavBuffer = encodeWavPcm16(downsampled, targetRate);
-    const res = await fetch('/api/transcribe_wav', {
+    const res = await fetch(apiUrl('/api/transcribe_wav'), {
       method: 'POST',
       headers: {
         'Content-Type': 'audio/wav',
@@ -1007,6 +1010,7 @@ async function stopMicCaptureAndTranscribe(trigger = 'manual') {
     }
   } catch (err) {
     setStatus(`Transcription failed: ${err.message}`);
+    showConnectionState(`รับเสียงไม่สำเร็จ: ${err.message}`);
   } finally {
     micStopping = false;
     setMicButtons(false);
@@ -1027,6 +1031,7 @@ function showWordOutput(payload) {
 
 function loadSequencePayload(payload) {
   sequence = normalizeSequence(payload);
+  comparisonClips = Array.isArray(payload?.meta?.sourceClips) ? [...payload.meta.sourceClips] : [];
   showWordOutput(payload);
   handOverlayScales = {
     left: calculateHandOverlayScale(sequence, 'left'),
@@ -1078,9 +1083,10 @@ async function onGenerateFromText() {
   }
   stopPlayback();
   showWordOutput(null);
+  comparisonClips = [];
   setStatus('Generating sequence from text...');
   try {
-    const url = `/api/generate_sequence?text=${encodeURIComponent(raw)}`;
+    const url = apiUrl(`/api/generate_sequence?text=${encodeURIComponent(raw)}`);
     const res = await fetch(url);
     const data = await res.json();
     if (!res.ok || !data.ok || !data.payload) {
@@ -1093,6 +1099,7 @@ async function onGenerateFromText() {
       ? 'ไม่พบคำที่ต้องการ'
       : '');
     setStatus(`Generate failed: ${err.message}`);
+    showConnectionState(`สร้างท่าทางไม่สำเร็จ: ${err.message}`);
   }
 }
 
@@ -1111,15 +1118,18 @@ async function onAvatarFileChange(event) {
 async function pollMicReadiness() {
   const label = document.getElementById('micModelStatus');
   try {
-    const response = await fetch('/api/health', { cache: 'no-store' });
+    const response = await fetch(apiUrl('/api/health'), { cache: 'no-store', signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error('Server unavailable');
-    const { stt } = await response.json();
+    const { stt, dataDirExists } = await response.json();
+    showConnectionState(dataDirExists === false ? 'เซิร์ฟเวอร์กำลังเตรียมฐานข้อมูล กรุณารอสักครู่' : '');
     micModelReady = stt?.state === 'ready';
     if (label) label.textContent = micModelReady ? 'Mic is ready'
+      : stt?.state === 'disabled' ? 'เซิร์ฟเวอร์นี้ยังไม่ได้เปิดระบบรับเสียง'
       : stt?.state === 'error' ? 'เตรียมโมเดลเสียงไม่สำเร็จ: ' + (stt.error || 'กรุณาเปิดเซิร์ฟเวอร์ใหม่')
       : 'loading model...';
   } catch {
     micModelReady = false;
+    showConnectionState('ยังเชื่อมต่อระบบสร้างท่าทางไม่ได้ กรุณาตรวจ URL ของเซิร์ฟเวอร์และการเชื่อมต่อ');
     if (label) label.textContent = 'กำลังรอเชื่อมต่อเซิร์ฟเวอร์เสียง…';
   }
   setMicButtons(isMicRecording);
@@ -1128,6 +1138,33 @@ async function pollMicReadiness() {
 }
 
 async function init() {
+  installComparison(() => {
+    if (!sequence || comparisonClips.length !== 1) throw new Error('กรุณา Generate คำหรือวลีที่ใช้คลิปเดียว เช่น you หรือ high school ก่อน');
+    if (isMicRecording || micStopping) throw new Error('กรุณารอให้การรับเสียงเสร็จก่อน');
+    const savedFrame = currentFrame;
+    const wasPlaying = playing;
+    stopPlayback();
+    const samples = [];
+    const canvas = document.querySelector('.illustration-canvas');
+    const copy = document.createElement('canvas');
+    copy.width = 640; copy.height = 640;
+    const ctx = copy.getContext('2d');
+    try {
+      const count = Math.min(12, sequence.frames.length);
+      if (count < 2) throw new Error('คลิปต้องมีอย่างน้อย 2 เฟรม');
+      for (let i = 0; i < count; i++) {
+        const frame = Math.round(i * (sequence.frames.length - 1) / (count - 1));
+        renderFrame(frame);
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 640, 640);
+        ctx.drawImage(canvas, 0, 0, 640, 640);
+        samples.push({frame, progress: frame / (sequence.frames.length - 1), image: copy.toDataURL('image/png')});
+      }
+      return {clip: comparisonClips[0], samples, avatar: el.avatarSelect.value};
+    } finally {
+      renderFrame(savedFrame);
+      if (wasPlaying) startPlayback();
+    }
+  });
   void pollMicReadiness();
   el.textPrompt = document.getElementById('textPrompt');
   el.generateBtn = document.getElementById('generateBtn');

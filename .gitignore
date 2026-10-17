@@ -26,3 +26,8 @@ pose-animator/resources/data/_tmp_*.json
 *.sqlite3
 *.sqlite3-*
 *.sqlite3.importing*
+comparison_models/
+.vercel/
+.env
+.env.*
+!.env.example
