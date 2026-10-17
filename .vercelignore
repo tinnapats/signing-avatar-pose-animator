@@ -10,3 +10,7 @@ __pycache__
 tests
 .deployment-tools
 frontend-tooling/pnpm-lock.yaml
+.env*
+*.py
+requirements*.txt
+Dockerfile
