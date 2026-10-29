@@ -51,3 +51,8 @@ recognition_audit/*_env/
 evaluation/**/node_modules/
 evaluation/**/__pycache__/
 evaluation/**/.venv/
+
+# Coordinate-fidelity inputs, captures and generated reports stay local.
+fidelity_results/
+fidelity_verification/**
+!fidelity_verification/README.md
