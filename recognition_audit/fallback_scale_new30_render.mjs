@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const here=path.dirname(fileURLToPath(import.meta.url));
+let code=await fs.readFile(path.join(here,'fallback_components_render.mjs'),'utf8');
+code=code.replace('const here=path.dirname(fileURLToPath(import.meta.url));',`const here=${JSON.stringify(here)};`);
+code=code.replaceAll('fallback_components_20261003','fallback_scale_new30_20261004');
+const needle="await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));";
+code=code.replace(needle,`source=source.replace(",{id:'ROTATE',scale:1,anchor:1,fallbackAdjust:true,rotate:true,resize:false}",'').replace(",{id:'BOTH',scale:1,anchor:1,fallbackAdjust:true,rotate:true,resize:true}",'');\n${needle}`);
+await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));

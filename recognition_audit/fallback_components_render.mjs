@@ -1,0 +1,14 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const here=path.dirname(fileURLToPath(import.meta.url));
+let source=await fs.readFile(path.join(here,'fallback_boundary_render.mjs'),'utf8');
+source=source.replace('const here=path.dirname(fileURLToPath(import.meta.url));',`const here=${JSON.stringify(here)};`);
+source=source.replace("const adjustment=await fs.readFile(path.join(here,'fallback_boundary_adjust.js'),'utf8');",`let adjustment=await fs.readFile(path.join(here,'fallback_boundary_adjust.js'),'utf8');
+adjustment=adjustment.replace('const rotation=Math.max(-45,Math.min(45,angle))*weight;', 'const rotation=window.auditOptions.rotate ? Math.max(-45,Math.min(45,angle))*weight : 0;');
+adjustment=adjustment.replace('const scale=1+(Math.max(.85,Math.min(1.15,target/diagonal))-1)*weight;', 'const scale=window.auditOptions.resize ? 1+(Math.max(.85,Math.min(1.15,target/diagonal))-1)*weight : 1;');`);
+source=source.replaceAll('fallback_boundary_20261003','fallback_components_20261003');
+const old="[{id:'OFF',scale:1,anchor:1,fallbackAdjust:false},{id:'ON',scale:1,anchor:1,fallbackAdjust:true}]";
+if(source.split(old).length!==2)throw Error('Variants hook mismatch');
+source=source.replace(old,"[{id:'OFF',scale:1,anchor:1,fallbackAdjust:false},{id:'ROTATE',scale:1,anchor:1,fallbackAdjust:true,rotate:true,resize:false},{id:'SCALE',scale:1,anchor:1,fallbackAdjust:true,rotate:false,resize:true},{id:'BOTH',scale:1,anchor:1,fallbackAdjust:true,rotate:true,resize:true}]");
+await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));

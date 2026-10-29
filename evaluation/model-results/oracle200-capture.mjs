@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const dir=path.dirname(fileURLToPath(import.meta.url));
+let code=await fs.readFile(path.join(dir,'confirm30-capture.mjs'),'utf8');
+code=code.replace("path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\\/([A-Z]:)/,'$1')),'confirm30-crop-20261009')",JSON.stringify(path.join(dir,'oracle200-20261011')));
+if(!code.includes('oracle200-20261011'))throw Error('Output replacement failed');
+code=code.replace('i=30;i<60','i=0;i<200').replace("||old.labels.includes(c.label)",'').replace("String(i-30)","String(i)");
+code=code.replace('Positions30:60 in frozen200 order; labels disjoint from development30; no selection by recognition. New to image-crop trial, NOT wholly unseen to project: existing200 earlier coordinate experiments.','Frozen200 order, first30 reproduction, additional170 separately; archived development data, not pristine holdout. No selection by recognition. Oracle mask/coordinates diagnostic only.');
+await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));

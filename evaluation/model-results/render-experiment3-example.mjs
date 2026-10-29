@@ -1,0 +1,4 @@
+import {chromium} from 'file:///C:/Users/newtu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import path from 'node:path';import {fileURLToPath,pathToFileURL} from 'node:url';
+const out=path.join(path.dirname(fileURLToPath(import.meta.url)),'experiment3-example-20261013');const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+try{const page=await browser.newPage({viewport:{width:1800,height:750},deviceScaleFactor:2});await page.goto(pathToFileURL(path.join(out,'experiment3-hello.svg')).href);await page.evaluate(()=>document.fonts.ready);await page.locator('svg').screenshot({path:path.join(out,'experiment3-hello.png')});}finally{await browser.close();}

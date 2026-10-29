@@ -1,0 +1,13 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const here=path.dirname(fileURLToPath(import.meta.url));
+let source=await fs.readFile(path.join(here,'render_bounds_scale_render.mjs'),'utf8');
+source=source.replace('const here=path.dirname(fileURLToPath(import.meta.url));',`const here=${JSON.stringify(here)};`);
+const hook="adjustment=adjustment.replace('let reference=null, distance=0;'";
+if(source.split(hook).length!==2)throw Error('Reference hook mismatch');
+source=source.replace(hook,`adjustment=adjustment.replace('h?.observed && getDetailedHandAlpha(h)>0', '(window.auditOptions.adjacentReference ? !!h : h?.observed) && getDetailedHandAlpha(h)>0');
+${hook}`);
+source=source.replace("{id:'OLD',scale:1,anchor:1,fallbackAdjust:true},{id:'NEW',scale:1,anchor:1,fallbackAdjust:true,renderBounds:true}","{id:'OLD',scale:1,anchor:1,fallbackAdjust:true,renderBounds:true},{id:'NEW',scale:1,anchor:1,fallbackAdjust:true,renderBounds:true,adjacentReference:true}");
+source=source.replaceAll('render_bounds_scale_camera_20261004','adjacent_reference_20261004');
+await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));

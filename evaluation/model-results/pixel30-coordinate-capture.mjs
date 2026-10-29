@@ -1,0 +1,15 @@
+import fs from 'node:fs/promises';import path from 'node:path';import crypto from 'node:crypto';
+const root='C:/Users/newtu/signing-avatar-github-newton-upload',out=root+'/recognition_audit/pixels30_20261007';
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+const p=JSON.parse(await fs.readFile(out+'/protocol.json','utf8'));
+for(const [f,h]of Object.entries(p.production))if(sha(await fs.readFile(root+'/'+f))!==h)throw Error('Production changed '+f);
+let code=await fs.readFile(root+'/recognition_audit/render_hands.mjs','utf8');
+code=code.replace('const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));',`const root=${JSON.stringify(root)};`);
+const a=code.indexOf('const hook=`'),b=code.indexOf('await build(',a);
+const hook=`window.runFidelityCase=async(payload,indices)=>{stopPlayback();loadSequencePayload(payload);if(handRigReady||!showHandOverlays)throw Error('Unexpected mode');const rows=[];for(const index of indices){renderFrame(index);canvasScope.view.update();const hands={left:{},right:{}};for(const group of canvasScope.project.activeLayer.children){const side=group.data.auditSide;if(!side||!group.visible||group.opacity===0)continue;for(const stroke of group.children){const ids=stroke.data.auditIds;if(!ids)continue;stroke.segments.forEach((segment,i)=>{const p=stroke.localToGlobal(segment.point);const v=canvasScope.view.projectToView(p);hands[side][ids[i]]=[v.x,v.y];});}}const c=document.querySelector('canvas.illustration-canvas');rows.push({index,hands,pixelRatio:c.width/canvasScope.view.viewSize.width,png:c.toDataURL('image/png').split(',')[1]});}return rows;};`;
+code=code.slice(0,a)+'const hook='+JSON.stringify(hook)+';\n'+code.slice(b);
+const x=code.indexOf(' const cases=JSON.parse('),y=code.indexOf(' if(errors.length)',x);
+code=code.slice(0,x)+`const results=[];for(const d of ${JSON.stringify(p.descriptors)}){const test=JSON.parse(await fs.readFile(d.file,'utf8'));const old=JSON.parse(await fs.readFile(auditOut+'/capture_'+d.id+'.json','utf8'));const samples=await page.evaluate(({payload,frameIndices})=>window.runFidelityCase(payload,frameIndices),test);let matched=0;for(let i=0;i<samples.length;i++){const r=samples[i];const h=(await import('node:crypto')).createHash('sha256').update(Buffer.from(r.png,'base64')).digest('hex');r.pngMatches=h===old.frames[i].sha256;if(r.pngMatches)matched++;delete r.png;for(const side of ['left','right'])for(const key of Object.keys(r.hands[side]))r.hands[side][key]=r.hands[side][key].map(v=>v*r.pixelRatio);}results.push({id:d.id,label:d.label,samples});console.log(d.label,'PNG matches',matched+'/'+samples.length);} `+code.slice(y);
+code=code.replace("path.join(auditOut,'rendered.json')","path.join(auditOut,'coordinate_reference.json')");
+process.env.AUDIT_OUTPUT=out;await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+for(const [f,h]of Object.entries(p.production))if(sha(await fs.readFile(root+'/'+f))!==h)throw Error('Production changed '+f);

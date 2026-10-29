@@ -26,3 +26,28 @@ pose-animator/resources/data/_tmp_*.json
 *.sqlite3
 *.sqlite3-*
 *.sqlite3.importing*
+
+# Evaluation: local artifacts and models are never published.
+# Explicitly allow only reviewed source code and documentation.
+recognition_audit/**
+!recognition_audit/**/
+!recognition_audit/*.py
+!recognition_audit/*.mjs
+!recognition_audit/*.js
+!recognition_audit/*.html
+!recognition_audit/OpenHands_LICENSE.txt
+!recognition_audit/README_MIGRATION_TH.md
+!recognition_audit/slgcn_trial_20261002/upstream_*.py
+!recognition_audit/model_comparison/upstream_*.py
+evaluation/**
+!evaluation/**/
+!evaluation/*.py
+!evaluation/*.md
+!evaluation/model-results/*.py
+!evaluation/model-results/*.mjs
+!evaluation/model-results/sdpose-trial-20261009/*.py
+!evaluation/model-results/hand-reference60-20261014/*.py
+recognition_audit/*_env/
+evaluation/**/node_modules/
+evaluation/**/__pycache__/
+evaluation/**/.venv/
