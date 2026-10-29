@@ -14,7 +14,7 @@ RMSE measures geometric error, not human comprehension.
 ## Current checkout workflow
 
 Requires local `SLclean.sqlite3`, Python with numpy/pandas, Node.js, Vite, Playwright and Chrome.
-Set `AUDIT_VITE` to Vite's `dist/node/index.js`, `AUDIT_PLAYWRIGHT` to Playwright's `index.mjs`, and optionally `AUDIT_BROWSER` to Chrome's executable. Existing defaults target this workstation.
+Install Vite and Playwright under `frontend-tooling/node_modules` (see FRIEND_INSTALL_TH.md). Chromium installed by Playwright is the default. Optional overrides: `AUDIT_VITE`, `AUDIT_PLAYWRIGHT`, `AUDIT_BROWSER`.
 
 Run from the repository root (use the installed Python environment):
 
@@ -30,7 +30,7 @@ The original capture workflow is `python measure_render_fidelity.py prepare`, th
 
 ## Preserve historical evidence
 
-Without overrides, the verification pair intentionally uses the original `signing-avatar-github-tinnapat` source and writes to `fidelity_verification`. Do not interpret historical results as newly evaluated newton results.
+Without overrides, the verification pair now uses this checkout and writes to `fidelity_verification/current`, keeping historical results at the parent level untouched. Do not interpret historical results as newly evaluated newton results.
 Use the same `FIDELITY_SOURCE` and `FIDELITY_OUTPUT` for capture and summarization; do not modify the source or inputs between them. Always choose a fresh output directory for new verification runs.
 The preparation command overwrites `fidelity_results/inputs.json`; preserve any prior results before preparing again. The renderer hooks deliberately fail if the expected source layout changes; do not bypass those checks.
 

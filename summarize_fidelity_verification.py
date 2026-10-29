@@ -1,12 +1,12 @@
-"""Summarize the selected snapshot; default is the historical tinnapat source."""
+"""Summarize the explicitly selected source or this checkout; preserve old archives."""
 import os
 import hashlib
 import json
 from pathlib import Path
 import numpy as np
 
-SOURCE = Path(os.environ.get('FIDELITY_SOURCE', 'C:/Users/newtu/signing-avatar-github-tinnapat')).resolve()
-OUT = Path(os.environ.get('FIDELITY_OUTPUT', str(Path(__file__).resolve().parent / 'fidelity_verification'))).resolve()
+SOURCE = Path(os.environ.get('FIDELITY_SOURCE', str(Path(__file__).resolve().parent))).resolve()
+OUT = Path(os.environ.get('FIDELITY_OUTPUT', str(SOURCE / 'fidelity_verification' / 'current'))).resolve()
 
 def xy(k):
     return np.array([k['position']['x'], k['position']['y']], dtype=float)

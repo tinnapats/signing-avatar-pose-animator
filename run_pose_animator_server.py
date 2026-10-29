@@ -146,7 +146,8 @@ class PoseAnimatorHandler(SimpleHTTPRequestHandler):
         except Exception as exc:
             raise RuntimeError(
                 f"Could not load cached XLSR-53 model '{cls.asr_model_id}'. "
-                "Start the server once with internet access to download the model."
+                "Supply --asr-model pointing to a complete local model directory, "
+                "or download the model into the Hugging Face cache before starting."
             ) from exc
         return cls._asr_pipeline
 
@@ -452,7 +453,7 @@ def main() -> None:
     parser.add_argument("--static-dir", default="pose-animator-dist", help="Directory to serve as web root.")
     parser.add_argument(
         "--data-dir",
-        default=r"C:\pro1end\SLclean.sqlite3",
+        default="SLclean.sqlite3",
         help="SQLite clip database or CSV dataset directory.",
     )
     parser.add_argument("--fps", type=float, default=30.0)
@@ -477,7 +478,9 @@ def main() -> None:
     parser.add_argument("--repair-hand-topology", action="store_true")
     parser.add_argument(
         "--asr-model",
-        default="jonatasgrosman/wav2vec2-large-xlsr-53-english",
+        default=(str(Path(__file__).resolve().parent / 'models' / 'xlsr53-english')
+                 if (Path(__file__).resolve().parent / 'models' / 'xlsr53-english' / 'config.json').is_file()
+                 else "jonatasgrosman/wav2vec2-large-xlsr-53-english"),
         help="Hugging Face XLSR-53 speech-recognition model ID.",
     )
     args = parser.parse_args()

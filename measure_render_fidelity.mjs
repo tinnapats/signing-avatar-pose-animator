@@ -4,8 +4,8 @@ import os from 'node:os';
 import http from 'node:http';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
-const {build}=await import(pathToFileURL(process.env.AUDIT_VITE||'C:/Users/newtu/signing-avatar-pose-animator/frontend-tooling/node_modules/vite/dist/node/index.js'));
-const {chromium}=await import(pathToFileURL(process.env.AUDIT_PLAYWRIGHT||'C:/Users/newtu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs'));
+const {build}=await import(pathToFileURL(process.env.AUDIT_VITE||path.join(root,'frontend-tooling/node_modules/vite/dist/node/index.js')));
+const {chromium}=await import(pathToFileURL(process.env.AUDIT_PLAYWRIGHT||path.join(root,'frontend-tooling/node_modules/playwright/index.mjs')));
 const temp=await fs.mkdtemp(path.join(os.tmpdir(),'avatar-fidelity-'));
 const hook=`window.runFidelityCase = (payload, frameIndices) => {
  stopPlayback(); loadSequencePayload(payload);
@@ -53,7 +53,7 @@ const server=http.createServer(async(req,res)=>{try{
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 let browser;
 try{
- browser=await chromium.launch({headless:true,executablePath:process.env.AUDIT_BROWSER||'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+ browser=await chromium.launch({headless:true,...(process.env.AUDIT_BROWSER?{executablePath:process.env.AUDIT_BROWSER}:{})});
  const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`http://127.0.0.1:${server.address().port}/dataset_player.html`);
  await page.waitForFunction(()=>typeof window.runFidelityCase==='function',null,{timeout:60000});

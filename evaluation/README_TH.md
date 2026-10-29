@@ -26,9 +26,9 @@ Experiment 2–3 ใช้อาร์เรย์ที่ผ่าน normaliz
 .\run_evaluation.cmd --experiment 3 --limit 200
 ```
 
-Python เดิมที่เปิดโมเดลได้อยู่ที่
-`C:\Users\newtu\signing-avatar-pose-animator\.venv\Scripts\python.exe`
-เปลี่ยนได้ด้วยตัวแปร `SIGN_EVAL_PYTHON` (ต้องมี torch, numpy, pandas, PyYAML)
+เครื่องเพื่อนให้รัน `setup_friend.cmd` เพื่อสร้าง `.venv` ภายในโปรเจกต์
+ตัวเปิดเลือก environment ในโปรเจกต์ก่อน โดยเครื่องเดิมยังมี fallback ไป sibling checkout
+เปลี่ยนได้ด้วยตัวแปร `SIGN_EVAL_PYTHON` หรือ `SIGN_PYTHON` (ต้องมี torch, numpy, pandas, PyYAML)
 ตัวตรวจภาพมี environment อยู่ใน `recognition_audit/rtmpose_env` และ `paired_video_env`
 environment เหล่านี้เหมาะกับเครื่องเดิม ไม่ใช่แพ็กเกจย้ายข้ามเครื่องโดยตรง
 

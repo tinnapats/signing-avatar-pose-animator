@@ -56,3 +56,7 @@ evaluation/**/.venv/
 fidelity_results/
 fidelity_verification/**
 !fidelity_verification/README.md
+
+# Friend handoff bundles and local model weights must never be committed.
+friend_bundle/
+models/
