@@ -23,6 +23,10 @@ def replace_file(path, data):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--source-root', type=Path, help='Original checkout path recorded in a handoff manifest')
+    args = parser.parse_args()
     # Match both Python/JS normal strings and serialized Windows path literals.
     roots = [
         (str(ROOT.parent/'signing-avatar-github-tinnapat'), str(ROOT)),
@@ -34,7 +38,12 @@ def main():
         (str(Path.home()/'AppData/Local/Programs/Python/Python312'), str(ROOT/'local_runtime/python312')),
         ('C:\\Program Files\\Google\\Chrome\\Application', str(ROOT/'local_runtime/chrome')),
     ]
-    candidates = list((ROOT/'recognition_audit').glob('*.py')) + list((ROOT/'recognition_audit').glob('*.mjs'))
+    if args.source_root:
+        roots.append((str(args.source_root), str(ROOT)))
+    candidates = list(ROOT.glob('*.py')) + list(ROOT.glob('*.mjs'))
+    # Migration utilities deliberately retain source-history mapping logic.
+    candidates = [p for p in candidates if p.name not in {'rebase_local_runtime.py','portable_paths.py','build_complete_bundle.py','restore_complete_bundle.py','test_isolated_checkout.py','build_friend_bundle.py','consolidate_local.py'}]
+    candidates += list((ROOT/'recognition_audit').glob('*.py')) + list((ROOT/'recognition_audit').glob('*.mjs'))
     base = ROOT/'evaluation/model-results'
     candidates += list(base.glob('*.py')) + list(base.glob('*.mjs'))
     for folder in ('sdpose-trial-20261009', 'hand-reference60-20261014'):
