@@ -1,4 +1,11 @@
 """Exact affine counterfactuals from actual200; browser validation on changed20."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import math
 import sys
@@ -55,7 +62,7 @@ def geometry(c,a):
 
 def prepare():
     assert not OUT.exists();OUT.mkdir();(OUT/'arrays').mkdir()
-    prior=json.loads((SRC/'results.json').read_text());labels=json.loads((SRC/'protocol.json').read_text())['labels']
+    prior=_local_json_loads((SRC/'results.json').read_text());labels=_local_json_loads((SRC/'protocol.json').read_text())['labels']
     by={(r['label'],r['stage']):r for r in prior['predictions'] if r['model']=='ST-GCN'}
     review=[l for l in labels if (by[l,'pre']['prediction']==l)!=(by[l,'post']['prediction']==l)];assert len(review)==20
     files=[SRC/'inputs.json',SRC/'renderer/rendered.json',SRC/'results.json',HERE/'wlasl_stgcn.zip']
@@ -64,9 +71,9 @@ def prepare():
         method='D actual rendered captures. A/B/C analytically reconstructed from exact affine projection; browser verification on preselected changed20, not fresh800 Canvas captures.',
         scope='Development, one clip/word, no production changes. Same visibility/body/native fallback across conditions; original30FPS. No ASL correctness inference. No tuning.')
     (OUT/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
-    caps={c['phrase']:c for c in json.loads((SRC/'renderer/rendered.json').read_text())};selected=[];geoms=[];maxerr=0
+    caps={c['phrase']:c for c in _local_json_loads((SRC/'renderer/rendered.json').read_text())};selected=[];geoms=[];maxerr=0
     for i,label in enumerate(labels):
-        c=json.loads((SRC/'cases'/f'{i:03d}.json').read_text());assert c['label']==label
+        c=_local_json_loads((SRC/'cases'/f'{i:03d}.json').read_text());assert c['label']==label
         variants_a,err,scales=variants(c,caps[c['phrase']]);maxerr=max(maxerr,err)
         np.savez_compressed(OUT/'arrays'/f'{i:03d}.npz',**variants_a)
         for v,a in variants_a.items():geoms.append(dict(label=label,variant=v,**geometry(c,a)))
@@ -77,11 +84,11 @@ def prepare():
     print('Prepared200, browser review20, max affine error',maxerr,flush=True)
 
 def score():
-    p=json.loads((OUT/'protocol.json').read_text());assert base.production()==p['production']
+    p=_local_json_loads((OUT/'protocol.json').read_text());assert base.production()==p['production']
     for name,h in p['hashes'].items():assert base.sha(HERE/name)==h
-    captures=json.loads((OUT/'renderer/rendered.json').read_text());assert len(captures)==80
-    cases={c['phrase']:c for c in json.loads((OUT/'review_inputs.json').read_text())};worst=0
-    oldcaps={c['phrase']:c for c in json.loads((SRC/'renderer/rendered.json').read_text())}
+    captures=_local_json_loads((OUT/'renderer/rendered.json').read_text());assert len(captures)==80
+    cases={c['phrase']:c for c in _local_json_loads((OUT/'review_inputs.json').read_text())};worst=0
+    oldcaps={c['phrase']:c for c in _local_json_loads((SRC/'renderer/rendered.json').read_text())}
     for cap in captures:
         c=cases[cap['phrase']];i=p['labels'].index(c['label']);expected=np.load(OUT/'arrays'/f'{i:03d}.npz')[cap['variant']]
         actual=arrays(c,cap);error=float(np.max(np.abs(actual-expected)));worst=max(worst,error);assert error<.0001
@@ -89,7 +96,7 @@ def score():
             assert a['native']==b['native']
             for side in ['left','right']:assert set(a['hands'][side])==set(b['hands'][side])
         if cap['variant']=='D':assert cap['samples']==oldcaps[c['phrase']]['samples']
-    _,predict=prev.load_predictor();old={r['label']:r for r in json.loads((SRC/'results.json').read_text())['predictions'] if r['model']=='ST-GCN' and r['stage']=='post'}
+    _,predict=prev.load_predictor();old={r['label']:r for r in _local_json_loads((SRC/'results.json').read_text())['predictions'] if r['model']=='ST-GCN' and r['stage']=='post'}
     rows=[]
     for i,label in enumerate(p['labels']):
         data=np.load(OUT/'arrays'/f'{i:03d}.npz')
@@ -107,7 +114,7 @@ def score():
             if a and not b:l.append(label)
         n=len(g)+len(l);pv=min(1,2*sum(math.comb(n,k) for k in range(min(len(g),len(l))+1))/2**n) if n else 1
         paired[v]=dict(gained=g,lost=l,p=pv,bonferroni3=min(1,pv*3))
-    geom=json.loads((OUT/'geometry.json').read_text());avg={v:{k:float(np.mean([r[k] for r in geom['rows'] if r['variant']==v and r[k] is not None])) for k in ['wrist_to_pose_wrist_shoulders','hand_chain_to_projected_forearm','wrist_relative_second_difference_shoulders']} for v in VS}
+    geom=_local_json_loads((OUT/'geometry.json').read_text());avg={v:{k:float(np.mean([r[k] for r in geom['rows'] if r['variant']==v and r[k] is not None])) for k in ['wrist_to_pose_wrist_shoulders','hand_chain_to_projected_forearm','wrist_relative_second_difference_shoulders']} for v in VS}
     assert base.production()==p['production']
     result=dict(summaries=summaries,paired=paired,geometry_word_means=avg,predictions=rows,browser_max_error=worst,production_unchanged=True,control200_top1_exact=True,native_unchanged_in_review=True)
     (OUT/'results.json').write_text(json.dumps(result,indent=2),encoding='utf-8');print(json.dumps({k:v for k,v in result.items() if k!='predictions'},indent=2))

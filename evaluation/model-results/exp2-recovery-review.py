@@ -1,9 +1,16 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
 from PIL import Image,ImageDraw,ImageFont
 D=Path(__file__).resolve().parent;B=D/'oracle200-20261011';O=D/'exp2-recovery-20261013'
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 manifest={c['id']:c for c in read(B/'capture_manifest.json')};events=read(O/'extraction.json')['events'];chosen=[];seen=set()
 for kind in ['flow','wrist']:
  for e in events:

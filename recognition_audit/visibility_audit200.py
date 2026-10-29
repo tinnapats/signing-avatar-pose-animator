@@ -1,11 +1,18 @@
 """Coverage audit and frozen masking controls; never invent fallback joints."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from collections import Counter
 import numpy as np
 import novel_words30 as prev
 from equal_duration_trial import arrays
 base=prev.base; HERE=base.HERE; SRC=HERE/'slgcn200_20261002'; PAIR=HERE/'combined_winners200'; OUT=HERE/'visibility_audit_20261003'
-def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def read(p):return _local_json_loads(p.read_text(encoding='utf-8'))
 def write(p,x):p.write_text(json.dumps(x,ensure_ascii=False,indent=2),encoding='utf-8')
 def stats(c,cap):
     counts=Counter(); tracks={side:[] for side in ['left','right']};observed_mask=np.zeros((len(cap['samples']),2),dtype=bool)

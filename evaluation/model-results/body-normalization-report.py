@@ -1,7 +1,14 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,math
 from pathlib import Path
 import numpy as np
-O=Path(__file__).parent/'body-normalization-trial-20261009';read=lambda p:json.loads(p.read_text(encoding='utf8'));r=read(O/'results.json')
+O=Path(__file__).parent/'body-normalization-trial-20261009';read=lambda p:_local_json_loads(p.read_text(encoding='utf8'));r=read(O/'results.json')
 names={'BR_CR_SR':'ลำตัว RTMW / ศูนย์กลาง RTMW / ขนาด RTMW','BR_CR_SM':'ลำตัว RTMW / ศูนย์กลาง RTMW / ขนาด MP','BR_CM_SR':'ลำตัว RTMW / ศูนย์กลาง MP / ขนาด RTMW','BR_CM_SM':'ลำตัว RTMW / ศูนย์กลาง MP / ขนาด MP','BM_CR_SR':'ลำตัว MP / ศูนย์กลาง RTMW / ขนาด RTMW','BM_CR_SM':'ลำตัว MP / ศูนย์กลาง RTMW / ขนาด MP','BM_CM_SR':'ลำตัว MP / ศูนย์กลาง MP / ขนาด RTMW','BM_CM_SM':'ลำตัว MP / ศูนย์กลาง MP / ขนาด MP'}
 paired={}
 for k,rr in r['predictions'].items():

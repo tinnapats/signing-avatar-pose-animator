@@ -1,4 +1,11 @@
 """Controlled body-anchor substitution. No reference information until assignments saved."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json, hashlib
 from pathlib import Path
 import numpy as np
@@ -16,11 +23,11 @@ def stat(e):
     return {'rmse_px':float(np.sqrt(np.mean(a*a))),'pck10_pct':float(np.mean(a<=10)*100),'n_points':len(a)}
 
 tests()
-assert json.loads((P/'protocol.json').read_text())['status']=='three_clip_inference_completed'
+assert _local_json_loads((P/'protocol.json').read_text())['status']=='three_clip_inference_completed'
 O.mkdir(exist_ok=True)
 assert not (O/'decisions.json').exists(), 'Preserve prior experiment'
-rows=json.loads((P/'results.json').read_text())
-capture={c['id']:c for c in json.loads((B/'capture_manifest.json').read_text())}
+rows=_local_json_loads((P/'results.json').read_text())
+capture={c['id']:c for c in _local_json_loads((B/'capture_manifest.json').read_text())}
 cache={c:np.load(B/'rtm_trial_20261008'/f'{c}.npz') for c in capture if c in ('000','001','002')}
 protocol={'settings':SETTINGS,'variants':V,'changed_factor':'Body anchor coordinates AND confidence for COCO joints 5,6,7,8,9,10 from cached RTMW',
     'output_body':'Always original SDPose body; RTMW body is used for assignment only',
@@ -59,7 +66,7 @@ np.savez_compressed(O/'predictions.npz',**{v:np.array(pred[v]) for v in V},**{v+
 protocol.update(status='assignments_saved_before_reference_access',baseline_reproduced_exactly=True,frame_count=len(rows))
 (O/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
 # Only now access renderer references for evaluation; never modify decisions afterwards.
-refs={c['id']:{f['index']:f for f in c['samples']} for c in json.loads((B/'coordinate_reference.json').read_text())}
+refs={c['id']:{f['index']:f for f in c['samples']} for c in _local_json_loads((B/'coordinate_reference.json').read_text())}
 metrics={}; perclip={}; changes=[]
 for v in V:
     errors=[]; wrist=[]; byclip={}

@@ -1,9 +1,16 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,sys,collections
 from pathlib import Path
 import numpy as np
 import cv2
 ROOT=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007')
-def read(p):return json.loads((ROOT/p).read_text(encoding='utf8'))
+def read(p):return _local_json_loads((ROOT/p).read_text(encoding='utf8'))
 refs=read('coordinate_reference.json'); rows=[]; pairing=[]; separate=[]; coverage=collections.Counter()
 assert sum(len(c['samples']) for c in refs)==1964
 assert all(r['pngMatches'] for c in refs for r in c['samples'])

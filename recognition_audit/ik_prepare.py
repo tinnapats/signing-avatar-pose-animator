@@ -1,4 +1,11 @@
 """Experimental planar two-bone IK; no torch, production files untouched."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import copy,json,math,statistics,hashlib,subprocess
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
@@ -24,7 +31,7 @@ def solve(s,e,target,l1,l2,previous=None):
 
 for target in [[0,0],[100,0],[8,5],[-20,-10]]:
     solve([0,0],[4,2],target,6,5)
-cases=json.loads((HERE/'inputs.json').read_text());stats=[]
+cases=_local_json_loads((HERE/'inputs.json').read_text());stats=[]
 for case in cases:
     candidate=copy.deepcopy(case['payload']);frames=candidate['frames'];lengths={}
     for side in ['left','right']:
@@ -59,5 +66,5 @@ manifest={f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in files if 
 (OUT/'inputs.json').write_text(json.dumps(cases))
 (OUT/'arm_metrics.json').write_text(json.dumps(stats))
 (OUT/'reference_fit.json').write_bytes((HERE/'step1/reference_fit.json').read_bytes())
-assert manifest==json.loads((HERE/'step1/production_before.json').read_text()),'Source changed since reference generation'
+assert manifest==_local_json_loads((HERE/'step1/production_before.json').read_text()),'Source changed since reference generation'
 print('Prepared',len(cases),'cases; projected 2D lengths fixed per clip, elbow angle 15..165; no production changes.')

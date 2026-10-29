@@ -1,8 +1,15 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib
 from pathlib import Path
 import numpy as np
 import cv2
-BASE=Path(__file__).parent;O=BASE/'hand-quality-trial-20261009';B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');read=lambda p:json.loads(p.read_text(encoding='utf8'))
+BASE=Path(__file__).parent;O=BASE/'hand-quality-trial-20261009';B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');read=lambda p:_local_json_loads(p.read_text(encoding='utf8'))
 refs={c['id']:c for c in read(B/'coordinate_reference.json')};manifest=read(B/'capture_manifest.json');methods=['anchor_guard','shape_guard','combined_guard'];totals={k:dict(rejected=0,reference=0,improved=0,worsened=0,tied=0,without_reference=0) for k in methods};rows=[];examples={}
 edges=[(0,1),(1,2),(2,3),(3,4)]+[(0,k) for k in [5,9,13,17]]+[(k+j,k+j+1) for k in [5,9,13,17] for j in range(3)]
 for c in manifest:

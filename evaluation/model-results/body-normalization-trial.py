@@ -1,3 +1,10 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,importlib.util,itertools
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -5,7 +12,7 @@ import numpy as np
 import torch
 BASE=Path(__file__).parent;O=BASE/'body-normalization-trial-20261009';O.mkdir(exist_ok=True)
 A=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit');sys.path.insert(0,str(A));import run_audit as audit
-read=lambda p:json.loads(p.read_text(encoding='utf8'));save=lambda p,x:p.write_text(json.dumps(x,ensure_ascii=False,indent=2),encoding='utf8');sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+read=lambda p:_local_json_loads(p.read_text(encoding='utf8'));save=lambda p,x:p.write_text(json.dumps(x,ensure_ascii=False,indent=2),encoding='utf8');sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 Q=BASE/'hand-quality-trial-20261009';B=A/'pixels30_20261007'
 spec=importlib.util.spec_from_file_location('e',BASE/'rtm-eval.py');e=importlib.util.module_from_spec(spec);spec.loader.exec_module(e)
 COMBOS=list(itertools.product(['R','M'],repeat=3));NAMES=['B'+b+'_C'+c+'_S'+s for b,c,s in COMBOS]

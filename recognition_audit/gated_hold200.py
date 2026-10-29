@@ -1,4 +1,11 @@
 """One predeclared conservative hold candidate; isolated from production."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import copy
 import inspect
 import json
@@ -67,16 +74,16 @@ def test():
 def main():
     test();print('Gating tests passed',flush=True)
     assert not (OUT/'results.json').exists()
-    before=base.production();oldprotocol=json.loads((previous.OUT/'protocol.json').read_text());assert before==oldprotocol['production']
-    cases=json.loads((base.SOURCE/'inputs.json').read_text());labels=[c['phrase'] for c in cases]
+    before=base.production();oldprotocol=_local_json_loads((previous.OUT/'protocol.json').read_text());assert before==oldprotocol['production']
+    cases=_local_json_loads((base.SOURCE/'inputs.json').read_text());labels=[c['phrase'] for c in cases]
     assert labels==oldprotocol['labels']
-    old=json.loads((previous.OUT/'results.json').read_text());lookup={(r['label'],r['variant']):r for r in old['predictions']}
+    old=_local_json_loads((previous.OUT/'results.json').read_text());lookup={(r['label'],r['variant']):r for r in old['predictions']}
     OUT.mkdir(exist_ok=True);(OUT/'review_cases').mkdir(exist_ok=True)
     protocol=dict(rule=RULE,labels=labels,review=previous.REVIEW,production=before,fps=30,
         inputs_sha256=base.sha(base.SOURCE/'inputs.json'),prior_sha256=base.sha(previous.OUT/'results.json'),
         checkpoint_sha256=base.sha(base.HERE/'wlasl_stgcn.zip'),
         note='Single development candidate fixed before inference; short gaps and taper preserved. Hold capped at one 30fps frame, only confident observed hand and stable confident body wrist. Existing first-frame decay retained; no wrist translation.')
-    if (OUT/'protocol.json').exists():assert json.loads((OUT/'protocol.json').read_text())==protocol
+    if (OUT/'protocol.json').exists():assert _local_json_loads((OUT/'protocol.json').read_text())==protocol
     else:(OUT/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
     network,norm,vocab=base.audit.load_model()
     def predict(frames,label):
@@ -86,7 +93,7 @@ def main():
         top=p.topk(5)
         return dict(label=label,prediction=vocab[int(top.indices[0])],top5=[vocab[int(i)] for i in top.indices],target_probability=float(p[vocab.index(label)]))
     rows=[]
-    if (OUT/'progress.json').exists():rows=json.loads((OUT/'progress.json').read_text())['predictions']
+    if (OUT/'progress.json').exists():rows=_local_json_loads((OUT/'progress.json').read_text())['predictions']
     for i,r in enumerate(rows):assert r['label']==labels[i] and r['variant']=='gated_hold1'
     for i,c in enumerate(cases):
         if i<len(rows):continue
@@ -98,7 +105,7 @@ def main():
         frames=payload['frames'][::2];assert len(frames)==len(c['source30'])
         r=predict(frames,label);r.update(variant='gated_hold1',geometry=base.geometry(frames),coverage=previous.coverage(frames),gate_counts=dict(COUNTS))
         if label in previous.REVIEW:
-            review=[x for x in json.loads((previous.OUT/'review_cases'/f'{label}.json').read_text()) if x['variant'] in ['baseline','no_hold']]
+            review=[x for x in _local_json_loads((previous.OUT/'review_cases'/f'{label}.json').read_text()) if x['variant'] in ['baseline','no_hold']]
             review.append(dict(phrase=label+'__gated_hold1',label=label,variant='gated_hold1',payload=payload,frameIndices=list(range(0,len(payload['frames']),2)),coverage=previous.coverage(frames)))
             (OUT/'review_cases'/f'{label}.json').write_text(json.dumps(review),encoding='utf-8')
         rows.append(r);(OUT/'progress.json').write_text(json.dumps(dict(predictions=rows)),encoding='utf-8')
@@ -108,7 +115,7 @@ def main():
     assert base.production()==before and base.sha(previous.OUT/'results.json')==protocol['prior_sha256']
     (OUT/'results.json').write_text(json.dumps(dict(summaries=summaries,predictions=combined,production_unchanged=True,baseline_exact=True),indent=2),encoding='utf-8')
     review=[]
-    for l in previous.REVIEW:review.extend(json.loads((OUT/'review_cases'/f'{l}.json').read_text()))
+    for l in previous.REVIEW:review.extend(_local_json_loads((OUT/'review_cases'/f'{l}.json').read_text()))
     (OUT/'review_inputs.json').write_text(json.dumps(review),encoding='utf-8')
     print(json.dumps(summaries,indent=2),flush=True)
 

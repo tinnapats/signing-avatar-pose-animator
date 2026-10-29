@@ -1,9 +1,16 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,importlib.util,time
 from pathlib import Path
 import numpy as np
 sys.dont_write_bytecode=True
 D=Path(__file__).resolve().parent;F=D/'exp2-fullhand20-20261014';R=D/'exp2-rejection-audit-20261014';B=D/'oracle200-20261011';O=D/'exp2-wrist-temporal-20261014';A=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit')
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 def save(n,x):(O/n).write_text(json.dumps(x,indent=2),encoding='utf-8')
 def mod(n,p):
  s=importlib.util.spec_from_file_location(n,p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);return m

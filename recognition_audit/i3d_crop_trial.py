@@ -1,4 +1,11 @@
 """One frozen pixel-only crop per clip. No score-based crop search."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import importlib.util
 import io
@@ -32,7 +39,7 @@ def image_for_model(path,box):
 def prepare():
     OUT.mkdir(exist_ok=True)
     assert not (OUT/'protocol.json').exists(),'Protocol already frozen'
-    captures=json.loads((DATA/'capture_manifest.json').read_text());cases=[]
+    captures=_local_json_loads((DATA/'capture_manifest.json').read_text());cases=[]
     for c in captures:
         paths=sorted((DATA/'frames'/c['id']).glob('*.png'));assert len(paths)==c['frames']
         boxes=[]
@@ -58,14 +65,14 @@ def prepare():
     (OUT/'protocol.json').write_text(json.dumps(protocol,indent=2))
 
 def run():
-    protocol=json.loads((OUT/'protocol.json').read_text());assert base.digest(Path(__file__))==protocol['code_sha256']
+    protocol=_local_json_loads((OUT/'protocol.json').read_text());assert base.digest(Path(__file__))==protocol['code_sha256']
     assert hashes()==protocol['production_hashes']
     assert base.digest(DATA/'archived.zip')==protocol['checkpoint_sha256']
     assert base.digest(DATA/'results.json')==protocol['baseline_results_sha256']
     spec=importlib.util.spec_from_file_location('crop_i3d',DATA/'pytorch_i3d.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
     torch.set_num_threads(4);model=mod.InceptionI3d(2000,in_channels=3)
     with zipfile.ZipFile(DATA/'archived.zip') as z:state=torch.load(io.BytesIO(z.read(base.CKPT)),map_location='cpu',weights_only=True)
-    model.load_state_dict(state,strict=True);model.eval();labels=json.loads((DATA/'labels.json').read_text());rows=[]
+    model.load_state_dict(state,strict=True);model.eval();labels=_local_json_loads((DATA/'labels.json').read_text());rows=[]
     for c in protocol['cases']:
         paths=sorted((DATA/'frames'/c['id']).glob('*.png'));assert len(paths)==c['frames']
         assert all(base.digest(p)==c['frame_hashes'][p.name] for p in paths)
@@ -84,7 +91,7 @@ def run():
     summary=dict(n=len(rows),correct=sum(r['label']==r['prediction'] for r in rows),accuracy=100*np.mean([r['label']==r['prediction'] for r in rows]),macro_precision=100*np.mean(ps),macro_recall=100*np.mean(rs),macro_f1=100*np.mean(fs),top5=100*np.mean([r['label'] in r['top5'] for r in rows]))
     assert hashes()==protocol['production_hashes'] and base.digest(DATA/'results.json')==protocol['baseline_results_sha256']
     (OUT/'results.json').write_text(json.dumps(dict(summary=summary,perclass=details,predictions=rows,production_unchanged=True),indent=2))
-    old=json.loads((DATA/'results.json').read_text())['summary']
+    old=_local_json_loads((DATA/'results.json').read_text())['summary']
     lines=['# I3D: ภาพเต็มตัวเทียบครอปส่วนบนที่ครอบคลุมมือ','',
         '30 คลิปเดิมจาก Canvas จริง ไม่แก้ Avatar ไม่ทายต้นทาง ไม่ฝึกเพิ่ม กำหนดกรอบทั้งหมดก่อนเห็นคะแนน crop', '',
         '| ภาพ | ถูก/30 | Accuracy | Macro-P | Macro-R | Macro-F1 | Top-5 |','|---|---:|---:|---:|---:|---:|---:|']

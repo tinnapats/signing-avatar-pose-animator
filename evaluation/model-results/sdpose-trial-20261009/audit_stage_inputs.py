@@ -1,3 +1,10 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,zipfile,importlib.util
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -6,7 +13,7 @@ import torch
 ROOT=Path(__file__).resolve().parent;O=ROOT/'stage_inputs_20261011';O.mkdir(exist_ok=True)
 assert not (O/'protocol.json').exists()
 A=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit');B=A/'pixels30_20261007';H=A/'human30_preprocess_20261008'
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 def save(p,x):p.write_text(json.dumps(x,indent=2),encoding='utf-8')
 protocol={'status':'registered','human':'Existing verified WLASL test video IDs, complexity2 native FPS, normalizedxy. Independent control not asserted to be the source of Avatar CSV.',
@@ -19,7 +26,7 @@ sys.path.insert(0,str(A));import run_audit as audit
 spec=importlib.util.spec_from_file_location('ev',ROOT.parent/'rtm-eval.py');ev=importlib.util.module_from_spec(spec);spec.loader.exec_module(ev)
 model,norm,vocab=audit.load_model()
 trans=audit.module('audit_stage_trans','upstream_pose_transforms.py');selector=trans.PoseSelect(preset='mediapipe_holistic_minimal_27');assert selector.pose_indexes==audit.PICK
-metadata=json.loads(zipfile.ZipFile(A/'wlasl_metadata.zip').read('splits/asl2000.json'));idmap={str(i['video_id']):(r['gloss'],i['split']) for r in metadata for i in r['instances']}
+metadata=_local_json_loads(zipfile.ZipFile(A/'wlasl_metadata.zip').read('splits/asl2000.json'));idmap={str(i['video_id']):(r['gloss'],i['split']) for r in metadata for i in r['instances']}
 assert vocab==sorted(r['gloss'] for r in metadata)
 pred={};arrays={};logits={};trace=[]
 def predict(a,label,variant,key):

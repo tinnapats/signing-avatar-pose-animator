@@ -1,4 +1,11 @@
 """Pixel-only hand identity experiment. References accessed only after decisions are saved."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
@@ -67,8 +74,8 @@ def tests():
 
 def main():
     tests()
-    assert json.loads((O/'protocol.json').read_text())['status']=='three_clip_inference_completed'
-    rows=json.loads((O/'results.json').read_text())
+    assert _local_json_loads((O/'protocol.json').read_text())['status']=='three_clip_inference_completed'
+    rows=_local_json_loads((O/'results.json').read_text())
     outdir=O/'identity_trial'; outdir.mkdir(exist_ok=True)
     if (outdir/'decisions.json').exists(): raise RuntimeError('Preserve existing decisions')
     state={}; decisions=[]; arrays={v:[] for v in SETTINGS['variants']}; scores={v:[] for v in SETTINGS['variants']}
@@ -92,7 +99,7 @@ def main():
                         **{v+'_scores':np.array(a) for v,a in scores.items()})
     # Evaluation is separate and occurs only after all reference-free decisions are persisted.
     B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007')
-    refs={c['id']:{f['index']:f for f in c['samples']} for c in json.loads((B/'coordinate_reference.json').read_text())}
+    refs={c['id']:{f['index']:f for f in c['samples']} for c in _local_json_loads((B/'coordinate_reference.json').read_text())}
     report={'frames':len(rows),'recognition_run':False,'metrics':{},'per_clip':{},'changes':[]}
     for variant in SETTINGS['variants']:
         err=[]; byclip={}; wrist=[]; nhand=0

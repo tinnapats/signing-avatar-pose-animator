@@ -1,4 +1,11 @@
 """Reuse identical metrics/media generation with explicit v2 comparison pairs."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import fallback_trial_evaluate as audit
 import json
 audit.OUT=audit.HERE/'fallback_v2'
@@ -7,9 +14,9 @@ audit.PAIRS=[(v,'scale_only') for v in audit.VARIANTS[1:]]
 audit.PRIOR_MAPPING={'S50A1':'scale_only'}
 audit.CAP_VARIANTS=['radial','chain']
 def verify_reference():
-    rows=json.loads((audit.OUT/'rendered.json').read_text())
+    rows=_local_json_loads((audit.OUT/'rendered.json').read_text())
     lookup={(r['variant'],r['phrase']):r['samples'] for r in rows}
-    old=json.loads((audit.HERE/'fallback_trial/rendered.json').read_text())
+    old=_local_json_loads((audit.HERE/'fallback_trial/rendered.json').read_text())
     for r in old:
         if r['variant']!='combined':continue
         new=lookup['radial',r['phrase']]

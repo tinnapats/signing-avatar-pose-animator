@@ -1,4 +1,11 @@
 """Diagnostic decomposition on known failures, not a new validation set."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
@@ -12,11 +19,11 @@ WORDS=['president','toothbrush','crazy','cracker','politics']
 
 def main():
     OUT.mkdir(exist_ok=True);before=hashes()
-    cases=json.loads((DATA/'inputs.json').read_text());cases=[c for c in cases if c['phrase'] in WORDS]
+    cases=_local_json_loads((DATA/'inputs.json').read_text());cases=[c for c in cases if c['phrase'] in WORDS]
     assert len(cases)==5
-    captures={(r['variant'],r['phrase']):r['samples'] for r in json.loads((DATA/'comparison/rendered.json').read_text())}
-    fits={r['word']:r['global_fit'] for r in json.loads((DATA/'baseline_geometry/results.json').read_text())['rows']}
-    manifest={r['word']:r for r in json.loads((DATA/'manifest.json').read_text())}
+    captures={(r['variant'],r['phrase']):r['samples'] for r in _local_json_loads((DATA/'comparison/rendered.json').read_text())}
+    fits={r['word']:r['global_fit'] for r in _local_json_loads((DATA/'baseline_geometry/results.json').read_text())['rows']}
+    manifest={r['word']:r for r in _local_json_loads((DATA/'manifest.json').read_text())}
     allrows=[]
     for c in cases:
         word=c['phrase'];raw=pipeline.build_frames(pipeline.concat_clips([DATA/'csv'/(word+'.csv')],513,513,0,target_fps=30),513,513,0)

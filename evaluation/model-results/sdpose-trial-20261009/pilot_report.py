@@ -1,3 +1,10 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import cv2
@@ -5,9 +12,9 @@ import numpy as np
 ROOT=Path(__file__).resolve().parent
 O=ROOT/'pilot6'
 B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007')
-rows=json.loads((O/'results.json').read_text())
-assert json.loads((O/'protocol.json').read_text())['status']=='six_frame_inference_completed'
-refs={c['id']:{f['index']:f for f in c['samples']} for c in json.loads((B/'coordinate_reference.json').read_text())}
+rows=_local_json_loads((O/'results.json').read_text())
+assert _local_json_loads((O/'protocol.json').read_text())['status']=='six_frame_inference_completed'
+refs={c['id']:{f['index']:f for f in c['samples']} for c in _local_json_loads((B/'coordinate_reference.json').read_text())}
 edges=[(5,7),(7,9),(6,8),(8,10),(5,6)]
 for base in (91,112):
     for chain in ((0,1,2,3,4),(0,5,6,7,8),(0,9,10,11,12),(0,13,14,15,16),(0,17,18,19,20)):

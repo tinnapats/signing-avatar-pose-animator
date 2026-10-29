@@ -1,4 +1,11 @@
 """Frozen three-clip body-source ablation; no production writes."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys, json, hashlib, importlib.util
 from pathlib import Path
 sys.dont_write_bytecode = True
@@ -18,9 +25,9 @@ spec = importlib.util.spec_from_file_location('rtm_eval', ROOT.parent / 'rtm-eva
 ev = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ev)
 sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
-rows = json.loads((ROOT / 'tracking3/results.json').read_text())
+rows = _local_json_loads((ROOT / 'tracking3/results.json').read_text())
 z = np.load(D / 'predictions.npz')
-previous = json.loads((D / 'stgcn/results.json').read_text())
+previous = _local_json_loads((D / 'stgcn/results.json').read_text())
 sources = ['raw', 'rtmw_anchor', 'rtmw_temporal']
 protocol = {
     'status': 'registered', 'clips': ['abdomen', 'hello', 'love'],

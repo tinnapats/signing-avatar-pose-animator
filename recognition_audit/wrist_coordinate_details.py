@@ -1,12 +1,19 @@
 """Further diagnostics, not a fitted production correction."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import numpy as np
 import wrist_coordinate_trace as trace
 OUT=trace.OUT;pipe=trace.pipe;base=trace.base
-r=json.loads((OUT/'results.json').read_text());p=json.loads((OUT/'protocol.json').read_text())
+r=_local_json_loads((OUT/'results.json').read_text());p=_local_json_loads((OUT/'protocol.json').read_text())
 vectors=[];gau=[];examples=[]
 for label in p['review']:
-    d=json.loads((OUT/(label.replace(' ','_')+'_trace.json')).read_text());a=d['aligned'];n=len(a['build'])
+    d=_local_json_loads((OUT/(label.replace(' ','_')+'_trace.json')).read_text());a=d['aligned'];n=len(a['build'])
     for i in range(n):
         for side in ['left','right']:
             if not all(a[s][i]['sides'][side]['valid'] for s in p['stage_order']):continue

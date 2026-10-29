@@ -1,4 +1,11 @@
 """Repeat archived 30-clip protocol without replacing the original evidence."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import argparse
 import hashlib
 import json
@@ -21,12 +28,12 @@ def production():
 
 def prepare():
     if OUT.exists():raise RuntimeError('Refuse to overwrite an existing repeat')
-    manifest=json.loads((HERE/'manifest.json').read_text())
+    manifest=_local_json_loads((HERE/'manifest.json').read_text())
     checks={p:dict(expected=h,actual=sha(HERE/p),matches=sha(HERE/p)==h) for p,h in manifest.items()}
     critical=['inputs.json','rendered.json','wlasl_stgcn.zip','wlasl_metadata.zip','upstream_st_gcn.py','upstream_graph_utils.py','upstream_pose_transforms.py']
     assert all(checks[p]['matches'] for p in critical),'Archived evidence differs from manifest'
-    cases=json.loads((HERE/'inputs.json').read_text())
-    saved=json.loads((HERE/'results.json').read_text())
+    cases=_local_json_loads((HERE/'inputs.json').read_text())
+    saved=_local_json_loads((HERE/'results.json').read_text())
     assert [c['phrase'] for c in cases]==saved['labels_evaluated']
     assert len(cases)==30 and len(saved['predictions'])==210
     assert sha(HERE/'wlasl_stgcn.zip')==saved['checkpoint_sha256']
@@ -39,14 +46,14 @@ def prepare():
     print(json.dumps({p:c['matches'] for p,c in checks.items()},indent=2))
 
 def run():
-    provenance=json.loads((OUT/'provenance.json').read_text())
-    old_capture=json.loads((HERE/'rendered.json').read_text())
-    fresh=json.loads((OUT/'rendered.json').read_text())
+    provenance=_local_json_loads((OUT/'provenance.json').read_text())
+    old_capture=_local_json_loads((HERE/'rendered.json').read_text())
+    fresh=_local_json_loads((OUT/'rendered.json').read_text())
     assert fresh==old_capture,'Fresh renderer capture differs: stop before claiming exact reproduction'
     assert sha(OUT/'inputs.json')==sha(HERE/'inputs.json')
     original.run(OUT)
-    old=json.loads((HERE/'results.json').read_text())
-    new=json.loads((OUT/'results.json').read_text())
+    old=_local_json_loads((HERE/'results.json').read_text())
+    new=_local_json_loads((OUT/'results.json').read_text())
     fields=['label','variant','prediction','top5']
     differences=[];max_probability_delta=0
     for a,b in zip(old['predictions'],new['predictions']):

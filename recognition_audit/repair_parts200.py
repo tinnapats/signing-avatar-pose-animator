@@ -1,4 +1,11 @@
 """Split short interpolation from hold/fade, keeping taper and production intact."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import copy
 import inspect
 import json
@@ -56,18 +63,18 @@ def coverage(frames):
 def main():
     test_repair();print('Repair isolation tests passed',flush=True)
     assert not (OUT/'results.json').exists()
-    old=json.loads((base.HERE/'gap_split200/results.json').read_text())
-    protocol0=json.loads((base.OUT/'protocol.json').read_text())
+    old=_local_json_loads((base.HERE/'gap_split200/results.json').read_text())
+    protocol0=_local_json_loads((base.OUT/'protocol.json').read_text())
     before=base.production();assert before==protocol0['production_before']
     assert base.sha(base.SOURCE/'inputs.json')==protocol0['source_inputs_hash']
-    cases=json.loads((base.SOURCE/'inputs.json').read_text());labels=[c['phrase'] for c in cases]
+    cases=_local_json_loads((base.SOURCE/'inputs.json').read_text());labels=[c['phrase'] for c in cases]
     assert labels==protocol0['labels'] and len(labels)==200
     OUT.mkdir(exist_ok=True);(OUT/'review_cases').mkdir(exist_ok=True)
     protocol=dict(variants=VARIANTS,labels=labels,review=REVIEW,production=before,
         prior_sha256=base.sha(base.HERE/'gap_split200/results.json'),
         checkpoint_sha256=base.sha(base.HERE/'wlasl_stgcn.zip'),fps=30,
         note='Taper stays ON. no_short_fill leaves internal short gaps untouched, does not convert them to holds; no_hold sets repair fade=0 only. Known development200.')
-    if (OUT/'protocol.json').exists():assert json.loads((OUT/'protocol.json').read_text())==protocol
+    if (OUT/'protocol.json').exists():assert _local_json_loads((OUT/'protocol.json').read_text())==protocol
     else:(OUT/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
     network,normalize,vocab=base.audit.load_model()
     def predict(frames,label):
@@ -80,7 +87,7 @@ def main():
     lookup={(r['label'],r['variant']):r for r in old['predictions']}
     rows=[];done=0
     if (OUT/'progress.json').exists():
-        ck=json.loads((OUT/'progress.json').read_text());rows=ck['predictions'];done=ck['completed']
+        ck=_local_json_loads((OUT/'progress.json').read_text());rows=ck['predictions'];done=ck['completed']
         assert len(rows)==2*done
         for i,r in enumerate(rows):assert r['label']==labels[i//2] and r['variant']==VARIANTS[i%2]
     for i,c in enumerate(cases):
@@ -110,7 +117,7 @@ def main():
     assert base.sha(base.HERE/'gap_split200/results.json')==protocol['prior_sha256']
     (OUT/'results.json').write_text(json.dumps(dict(summaries=summaries,predictions=combined,production_unchanged=True,baseline_exact=True),indent=2),encoding='utf-8')
     review=[]
-    for l in REVIEW:review.extend(json.loads((OUT/'review_cases'/f'{l}.json').read_text()))
+    for l in REVIEW:review.extend(_local_json_loads((OUT/'review_cases'/f'{l}.json').read_text()))
     assert len(review)==48
     (OUT/'review_inputs.json').write_text(json.dumps(review),encoding='utf-8')
     print(json.dumps(summaries,indent=2),flush=True)

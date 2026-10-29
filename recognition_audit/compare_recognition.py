@@ -1,4 +1,11 @@
 """Recognition-only rerun on saved captures; never edits production or old reports."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -15,13 +22,13 @@ def main():
     predictions, summaries, evidence = [], [], {}
     for folder in ['step1b', 'ik_trial']:
         out = HERE / folder
-        assert json.loads((out/'production_before.json').read_text()) == before
+        assert _local_json_loads((out/'production_before.json').read_text()) == before
         inputs = out/'inputs.json' if folder == 'ik_trial' else HERE/'inputs.json'
         captures = out/'rendered.json'
         for path in [inputs, captures]:
             evidence[str(path.relative_to(HERE))] = hashlib.sha256(path.read_bytes()).hexdigest()
-        cases = {c['phrase']: c for c in json.loads(inputs.read_text())}
-        records = json.loads(captures.read_text())
+        cases = {c['phrase']: c for c in _local_json_loads(inputs.read_text())}
+        records = _local_json_loads(captures.read_text())
         seen = set()
         for record in records:
             variant, name = record['variant'], record['phrase']

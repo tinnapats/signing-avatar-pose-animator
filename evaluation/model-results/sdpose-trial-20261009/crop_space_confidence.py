@@ -1,11 +1,18 @@
 """Read-only evidence audit: crop space proxies and score/error association."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parent;P=ROOT/'crop_stage1_20261011';O=ROOT/'crop_space_confidence_20261011';O.mkdir(exist_ok=True)
 assert not (O/'protocol.json').exists()
 B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');R=B/'rtm_trial_20261008'
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 protocol={'status':'registered','rules':'No threshold tuning, no crop/recognition/production changes',
  'space':'Effective original square bbox incl 1.25 padding / tight axis-aligned bounding box of 21 renderer joints. Not skin segmentation or background percentage.',

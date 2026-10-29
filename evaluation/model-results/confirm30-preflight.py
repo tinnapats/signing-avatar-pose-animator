@@ -1,8 +1,15 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json
 from pathlib import Path
 import cv2,mediapipe as mp,numpy as np
 B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');O=Path(__file__).parent/'confirm30-crop-20261009'
-c=json.loads((B/'capture_manifest.json').read_text(encoding='utf8'))[0];old=np.load(B/'arrays'/'000.npz')['primary'];a=np.zeros_like(old)
+c=_local_json_loads((B/'capture_manifest.json').read_text(encoding='utf8'))[0];old=np.load(B/'arrays'/'000.npz')['primary'];a=np.zeros_like(old)
 with mp.solutions.holistic.Holistic(static_image_mode=False,smooth_landmarks=True,enable_segmentation=False,refine_face_landmarks=False,model_complexity=1,min_detection_confidence=.5,min_tracking_confidence=.5) as h:
  for i,f in enumerate(c['frames']):
   im=cv2.imread(str(B/'frames'/'000'/f['file']),-1);alpha=im[:,:,3:4].astype(np.float32)/255;im=np.rint(im[:,:,:3]*alpha+255*(1-alpha)).astype(np.uint8);r=h.process(cv2.cvtColor(im,cv2.COLOR_BGR2RGB))

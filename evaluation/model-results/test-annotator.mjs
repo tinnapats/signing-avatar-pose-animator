@@ -1,6 +1,6 @@
-import {chromium} from 'file:///C:/Users/newtu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs';
+import {chromium} from 'file:///C:/Users/newtu/signing-avatar-github-newton-upload/frontend-tooling/node_modules/playwright/index.mjs';
 import fs from 'node:fs/promises';import path from 'node:path';import {fileURLToPath,pathToFileURL} from 'node:url';import assert from 'node:assert/strict';
-const root=path.join(path.dirname(fileURLToPath(import.meta.url)),'body-reference-v1-20261009'),browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+const root=path.join(path.dirname(fileURLToPath(import.meta.url)),'body-reference-v1-20261009'),browser=await chromium.launch({headless:true,executablePath:'C:/Users/newtu/signing-avatar-github-newton-upload/local_runtime/chrome/chrome.exe'});
 try{const context=await browser.newContext({viewport:{width:1300,height:1000},acceptDownloads:true});const page=await context.newPage();let errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(pathToFileURL(path.join(root,'annotator.html')).href);await page.waitForFunction(()=>typeof data!=='undefined');assert.equal(await page.locator('#imageSelect option').count(),24);
 await page.locator('#canvas').click({position:{x:200,y:200}});assert.match(await page.locator('#message').textContent(),/ผู้ลงจุด/);
 await page.locator('#annotator').fill('tester-a');await page.locator('#annotator').press('Tab');await page.locator('#zoom').fill('200');await page.locator('#zoom').dispatchEvent('input');await page.locator('#canvas').click({position:{x:180,y:200}});

@@ -1,4 +1,11 @@
 """Paired geometry audit. Reference alignments are diagnostics, never model inputs."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib
 from pathlib import Path
 import numpy as np
@@ -40,8 +47,8 @@ protocol={'status':'registered','selection':'All six existing SDPose clips, no e
  'no_changes':'No threshold search, no recognition rerun, no production edits, no reference coordinates fed to model',
  'hashes':{str(p):sha(p) for p in [Path(__file__),*sources,B/'coordinate_reference.json']}}
 (O/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
-rows=sum([json.loads(p.read_text()) for p in sources],[])
-refs={c['id']:{f['index']:f for f in c['samples']} for c in json.loads((B/'coordinate_reference.json').read_text())}
+rows=sum([_local_json_loads(p.read_text()) for p in sources],[])
+refs={c['id']:{f['index']:f for f in c['samples']} for c in _local_json_loads((B/'coordinate_reference.json').read_text())}
 cache={cid:np.load(B/'rtm_trial_20261008'/f'{cid}.npz') for cid in {r['id'] for r in rows}}
 samples=[]
 for r in rows:

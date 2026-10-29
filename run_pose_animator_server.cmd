@@ -2,7 +2,6 @@
 setlocal
 set "ROOT=%~dp0"
 set "PYTHON_EXE=%ROOT%.venv\Scripts\python.exe"
-if not exist "%PYTHON_EXE%" set "PYTHON_EXE=%ROOT%..\signing-avatar-pose-animator\.venv\Scripts\python.exe"
 if defined SIGN_PYTHON set "PYTHON_EXE=%SIGN_PYTHON%"
 if not exist "%PYTHON_EXE%" (
   echo Python environment not found. Run setup_friend.cmd first or set SIGN_PYTHON.

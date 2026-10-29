@@ -60,3 +60,8 @@ fidelity_verification/**
 # Friend handoff bundles and local model weights must never be committed.
 friend_bundle/
 models/
+
+# Local consolidated dependencies and historical copies (never publish).
+local_runtime/
+local_archive/
+handoff/

@@ -1,4 +1,11 @@
 """Trace hand-pair geometry at each production stage without editing production."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import copy
 import json
 from contextlib import ExitStack
@@ -20,8 +27,8 @@ def measure(a):
 
 def main():
     before=hashes();OUT.mkdir(exist_ok=True)
-    cases=json.loads((PAIRED/'inputs.json').read_text())
-    captures={r['phrase']:r['samples'] for r in json.loads((PAIRED/'rendered.json').read_text())}
+    cases=_local_json_loads((PAIRED/'inputs.json').read_text())
+    captures={r['phrase']:r['samples'] for r in _local_json_loads((PAIRED/'rendered.json').read_text())}
     allrows=[]
     for case in cases:
         snapshots={}

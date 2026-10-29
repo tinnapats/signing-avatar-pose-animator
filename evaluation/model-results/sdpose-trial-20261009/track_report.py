@@ -1,12 +1,19 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
 import cv2
 R=Path(__file__).resolve().parent/'tracking3'
 O=R/'identity_trial'
-m=json.loads((O/'metrics.json').read_text())
-rows=json.loads((R/'results.json').read_text())
-d=json.loads((O/'decisions.json').read_text())
+m=_local_json_loads((O/'metrics.json').read_text())
+rows=_local_json_loads((R/'results.json').read_text())
+d=_local_json_loads((O/'decisions.json').read_text())
 x=np.load(O/'predictions.npz')
 variants=['raw','body_anchor','body_anchor_temporal']
 lines=['# SDPose: ทดลองจับคู่มือด้วยลำตัวและเวลา','',

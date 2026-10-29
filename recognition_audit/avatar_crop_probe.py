@@ -1,10 +1,17 @@
 """Fixed image-derived wrist crops; renderer coordinates used only for evaluation."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib,itertools
 from pathlib import Path
 import cv2,mediapipe as mp
 import numpy as np
 HERE=Path(__file__).resolve().parent;SRC=HERE/'adjacent_holdout60_20261004';PRE=HERE/'avatar_pixel_probe_20261004';OUT=HERE/'avatar_crop_probe_20261004'
-def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def read(p):return _local_json_loads(p.read_text(encoding='utf-8'))
 def write(p,x):p.write_text(json.dumps(x,indent=2,ensure_ascii=False),encoding='utf-8')
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def bbox(p):return [min(x[0] for x in p),min(x[1] for x in p),max(x[0] for x in p),max(x[1] for x in p)]

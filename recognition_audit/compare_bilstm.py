@@ -1,4 +1,11 @@
 """Isolated released-model comparison; baseline data/code remain untouched."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import inspect
 import io
@@ -34,7 +41,7 @@ def load_model():
     encoder.load_state_dict({k.removeprefix('model.encoder.'): v for k,v in ckpt['state_dict'].items() if k.startswith('model.encoder.')}, strict=True)
     decoder.load_state_dict({k.removeprefix('model.decoder.'): v for k,v in ckpt['state_dict'].items() if k.startswith('model.decoder.')}, strict=True)
     with zipfile.ZipFile(HERE/'wlasl_metadata.zip') as archive:
-        labels = sorted(v['gloss'] for v in json.loads(archive.read('splits/asl2000.json')))
+        labels = sorted(v['gloss'] for v in _local_json_loads(archive.read('splits/asl2000.json')))
     transforms = baseline.module('comparison_transforms', 'upstream_pose_transforms.py')
     normalize = transforms.CenterAndScaleNormalize(reference_points_preset='shoulder_mediapipe_holistic_minimal_27')
     return torch.nn.Sequential(encoder, decoder).eval(), normalize, labels
@@ -57,8 +64,8 @@ def main():
     namespace['run'](DATA)
     assert before == hashes(), 'Production changed during evaluation'
     assert all(sha(Path(p)) == h for p,h in evidence.items()), 'Baseline evidence changed'
-    old = json.loads((DATA/'results.json').read_text())
-    new = json.loads((OUT/'bilstm_results.json').read_text())
+    old = _local_json_loads((DATA/'results.json').read_text())
+    new = _local_json_loads((OUT/'bilstm_results.json').read_text())
     assert len(new['predictions']) == 700
     assert old['labels_evaluated'] == new['labels_evaluated']
     lines = ['# Same 100 clips: ST-GCN versus released BiLSTM', '',

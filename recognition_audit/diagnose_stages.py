@@ -1,4 +1,11 @@
 """Read-only source/pipeline diagnostics, isolated output. Not linguistic truth."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
@@ -10,9 +17,9 @@ OUT=HERE/'diagnosis'
 
 def main():
     before=hashes()
-    cases=json.loads((HERE/'validation_trial/inputs.json').read_text())
-    prior=json.loads((HERE/'validation_trial/results.json').read_text())
-    assert before==json.loads((HERE/'validation_trial/production_before.json').read_text())
+    cases=_local_json_loads((HERE/'validation_trial/inputs.json').read_text())
+    prior=_local_json_loads((HERE/'validation_trial/results.json').read_text())
+    assert before==_local_json_loads((HERE/'validation_trial/production_before.json').read_text())
     lookup={(r['variant'],r['label']):r['prediction'] for r in prior['predictions']}
     network,normalize,labels=load_model()
     rows=[]

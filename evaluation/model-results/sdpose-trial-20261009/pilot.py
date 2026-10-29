@@ -1,4 +1,11 @@
 """Six preselected pixel-only frames; staged official SDPose weights, no production edits."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import os, sys, json, time, hashlib, gc, traceback, argparse
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent
@@ -55,9 +62,9 @@ def clean():
     torch.cuda.empty_cache()
 
 try:
-    assert json.loads((ROOT/'weights_manifest.json').read_text())['status']=='downloaded_size_checked_and_hashed'
+    assert _local_json_loads((ROOT/'weights_manifest.json').read_text())['status']=='downloaded_size_checked_and_hashed'
     assert torch.cuda.is_available()
-    manifest = json.loads((B/'capture_manifest.json').read_text())
+    manifest = _local_json_loads((B/'capture_manifest.json').read_text())
     preprocess=transforms.Compose([transforms.Resize((1024,768)),transforms.ToTensor(),
                                   transforms.Normalize((.5,.5,.5),(.5,.5,.5))])
     for clip in (manifest[3:6] if args.next_three else manifest[:3]):

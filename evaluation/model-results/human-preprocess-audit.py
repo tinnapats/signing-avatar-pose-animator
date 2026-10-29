@@ -1,14 +1,21 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,zipfile
 from pathlib import Path
 sys.dont_write_bytecode=True
 import numpy as np
 B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');O=B/'human_preprocess_audit_20261008';sys.path.insert(0,str(B.parent))
-read=lambda p:json.loads(p.read_text(encoding='utf8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf8'))
 def save(p,v):p.write_text(json.dumps(v,ensure_ascii=False,indent=2),encoding='utf8')
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def extract():
  import cv2,mediapipe as mp
- O.mkdir(exist_ok=True);selection=read(B/'upper_crop_20261008/human_selection.json');metadata=json.loads(zipfile.ZipFile(B.parent/'wlasl_metadata.zip').read('splits/asl2000.json'));idmap={str(i['video_id']):(r['gloss'],i['split']) for r in metadata for i in r['instances']};verified=[]
+ O.mkdir(exist_ok=True);selection=read(B/'upper_crop_20261008/human_selection.json');metadata=_local_json_loads(zipfile.ZipFile(B.parent/'wlasl_metadata.zip').read('splits/asl2000.json'));idmap={str(i['video_id']):(r['gloss'],i['split']) for r in metadata for i in r['instances']};verified=[]
  for h in selection:
   video=Path(h['local_video']);assert sha(video)==h['sha256'];assert idmap[h['metadata']['video_id']]==(h['label'],h['metadata']['split']);cap=cv2.VideoCapture(str(video));fps=cap.get(cv2.CAP_PROP_FPS);rows=[];dims=[];wrist=[]
   with mp.solutions.holistic.Holistic(static_image_mode=False,model_complexity=2) as detector:

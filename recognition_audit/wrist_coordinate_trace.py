@@ -1,4 +1,11 @@
 """Read-only200 raw audit + exact stage tracing for fixed diagnostic20."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from contextlib import ExitStack
 from unittest.mock import patch
@@ -22,7 +29,7 @@ def snapshot(frames):
 
 def main():
     assert not OUT.exists();OUT.mkdir();before=base.production()
-    protocol0=json.loads((HERE/'scale_anchor200_20261003/protocol.json').read_text());labels=protocol0['labels'];review=protocol0['review']
+    protocol0=_local_json_loads((HERE/'scale_anchor200_20261003/protocol.json').read_text());labels=protocol0['labels'];review=protocol0['review']
     p=dict(labels=labels,review=review,production=before,scope='Diagnostic only. Raw wrist0 vs pose15/16 in aspect-corrected coordinates; full200. Stage trace fixed changed20. No confidence gating fixes, no landmark swap, no model inference, no production edits.',
         stage_order=['build','repair','taper','interpolate','body_gaussian','hand_gaussian','bones','articulation','fit'])
     (OUT/'protocol.json').write_text(json.dumps(p,indent=2),encoding='utf-8')
@@ -57,7 +64,7 @@ def main():
                 stack.enter_context(patch.object(pipe,'repair_hand_tracks',capture('repair',parts.make_repair(True,False))))
                 for name,fn in mapping.items():stack.enter_context(patch.object(pipe,fn,capture(name,getattr(pipe,fn),name in ['bones','articulation'])))
                 payload=pipe.build_payload(base.ROOT/'SLclean.sqlite3',[label+'.csv'],'',30,513,513,0,0,2,1.2,2,hand_gaussian_sigma=0,hand_gaussian_radius=0)
-            old=json.loads((SRC/'cases'/f'{i:03d}.json').read_text());assert payload['frames']==old['payload']['frames'],label
+            old=_local_json_loads((SRC/'cases'/f'{i:03d}.json').read_text());assert payload['frames']==old['payload']['frames'],label
             n=len(shots['build']);aligned={name:values if name in ['build','repair','taper'] else values[::2] for name,values in shots.items()};assert all(len(v)==n for v in aligned.values())
             common=[(j,side) for j in range(n) for side in ['left','right'] if all(aligned[s][j]['sides'][side]['valid'] for s in p['stage_order'])]
             metrics={}

@@ -1,4 +1,11 @@
 """Isolated short-gap bridge screening on the existing diagnostic twelve words."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import copy
 import json
 import sys
@@ -20,7 +27,7 @@ def xyz(h):
 
 def prepare():
     assert not OUT.exists(), 'Do not overwrite an experiment'
-    cases = [c for c in json.loads((SOURCE/'review_inputs.json').read_text()) if c['variant'] == 'no_hold_no_smoothing']
+    cases = [c for c in _local_json_loads((SOURCE/'review_inputs.json').read_text()) if c['variant'] == 'no_hold_no_smoothing']
     assert len(cases) == 12
     OUT.mkdir()
     protocol = dict(production=base.production(), source_hash=base.sha(SOURCE/'review_inputs.json'),
@@ -74,10 +81,10 @@ def prepare():
     print(json.dumps(dict(reasons=dict(Counter(r['reason'] for a in audit for r in a['runs'])),changed_hand_frames=sum(len(a['changes']) for a in audit)),indent=2))
 
 def score():
-    protocol=json.loads((OUT/'protocol.json').read_text());_,predict=model.load_predictor()
-    cases={c['phrase']:c for c in json.loads((OUT/'review_inputs.json').read_text())}
-    captures=json.loads((OUT/'renderer/rendered.json').read_text());assert len(captures)==24
-    old={c['phrase']:c for c in json.loads((SOURCE/'renderer/rendered.json').read_text()) if c['variant']=='S1A1'}
+    protocol=_local_json_loads((OUT/'protocol.json').read_text());_,predict=model.load_predictor()
+    cases={c['phrase']:c for c in _local_json_loads((OUT/'review_inputs.json').read_text())}
+    captures=_local_json_loads((OUT/'renderer/rendered.json').read_text());assert len(captures)==24
+    old={c['phrase']:c for c in _local_json_loads((SOURCE/'renderer/rendered.json').read_text()) if c['variant']=='S1A1'}
     rows=[]
     for cap in captures:
         c=cases[cap['phrase']];frames=[c['payload']['frames'][i] for i in c['frameIndices']]

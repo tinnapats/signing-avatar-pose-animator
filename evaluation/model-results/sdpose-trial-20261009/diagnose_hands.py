@@ -1,4 +1,11 @@
 """Post-hoc diagnosis, not validation or a label-dependent routing system."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,importlib.util
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -21,7 +28,7 @@ protocol={'status':'registered','purpose':'Post-hoc diagnosis of hello improveme
  'reference_usage':'Geometry evaluation only; never fed to recognition', 'production_edited':False}
 (O/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
 model,norm,vocab=audit.load_model()
-refs={c['id']:{s['index']:s for s in c['samples']} for c in json.loads((B/'coordinate_reference.json').read_text())}
+refs={c['id']:{s['index']:s for s in c['samples']} for c in _local_json_loads((B/'coordinate_reference.json').read_text())}
 results={};geometry={};arrays={};logits={}
 def stats(a):
  a=np.asarray(a)
@@ -32,7 +39,7 @@ def longest_missing(valid):
   run=0 if x else run+1;best=max(best,run)
  return best
 for cid,label,folder in [('001','hello','tracking3'),('005','please','confirmation3')]:
- rows=[r for r in json.loads((ROOT/folder/'results.json').read_text()) if r['id']==cid]
+ rows=[r for r in _local_json_loads((ROOT/folder/'results.json').read_text()) if r['id']==cid]
  cache=np.load(B/'rtm_trial_20261008'/f'{cid}.npz')
  assert np.allclose(cache['times'],[r['time'] for r in rows])
  kp={'S':np.array([r['keypoints'] for r in rows]),'R':cache['rtmw_det']}

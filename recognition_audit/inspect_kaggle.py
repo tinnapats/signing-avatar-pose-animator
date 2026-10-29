@@ -1,4 +1,11 @@
 """Fetch small metadata only; inspect SQLite read-only; do not infer clip identity."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import io
 import json
@@ -23,7 +30,7 @@ def fetch(url):
 
 def main():
     OUT.mkdir(exist_ok=True)
-    view=json.loads(fetch(BASE+'/view/sttaseen/wlasl2000-resized'))
+    view=_local_json_loads(fetch(BASE+'/view/sttaseen/wlasl2000-resized'))
     assert view['currentVersionNumber']==1, 'Review changed dataset version first'
     (OUT/'dataset_info.json').write_text(json.dumps(view,indent=2),encoding='utf-8')
     evidence={}
@@ -35,11 +42,11 @@ def main():
                 matches=[n for n in archive.namelist() if Path(n).name==name]
                 assert len(matches)==1
                 raw=archive.read(matches[0])
-        json.loads(raw)
+        _local_json_loads(raw)
         (OUT/name).write_bytes(raw)
         evidence[name]=dict(url=url,bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest())
         print('downloaded',name,len(raw),flush=True)
-    metadata=json.loads((OUT/'WLASL_v0.3.json').read_bytes())
+    metadata=_local_json_loads((OUT/'WLASL_v0.3.json').read_bytes())
     by_label={r['gloss'].lower():r['instances'] for r in metadata}
     with sqlite3.connect((ROOT/'SLclean.sqlite3').as_uri()+'?mode=ro',uri=True) as db:
         columns=[r[1] for r in db.execute('PRAGMA table_info(clips)')]
@@ -50,7 +57,7 @@ def main():
     for label,path,frames,cols in local:
         candidates=by_label.get(label.lower(),[])
         mappings.append(dict(label=label,local_path=path,local_frames=frames,match_status='label_only_not_verified' if candidates else 'no_label_match',candidates=[{k:c.get(k) for k in ['video_id','signer_id','split','frame_start','frame_end','fps']} for c in candidates]))
-    selected={r['word'] for r in json.loads((HERE/'diagnosis/review_cases.json').read_text())}
+    selected={r['word'] for r in _local_json_loads((HERE/'diagnosis/review_cases.json').read_text())}
     summary=dict(version=1,dataset_bytes=view.get('totalBytes'),metadata_labels=len(metadata),metadata_instances=sum(len(r['instances']) for r in metadata),sqlite_clips=len(local),labels_matched=sum(bool(m['candidates']) for m in mappings),verified_video_matches=0,sqlite_columns=columns,sqlite_metadata=database_meta,csv_example=[r.decode('utf-8-sig') for r in example],evidence=evidence)
     (OUT/'inspection.json').write_text(json.dumps(summary,indent=2),encoding='utf-8')
     (OUT/'label_candidates.json').write_text(json.dumps(mappings,indent=2),encoding='utf-8')

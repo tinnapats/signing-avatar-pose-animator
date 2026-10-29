@@ -1,4 +1,11 @@
 """Frozen new-word pilot; not certified unseen model-training data or signers."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import argparse
 import json
 import random
@@ -34,7 +41,7 @@ def prepare():
     for pattern in ['*/results.json','*/protocol.json','*/provenance.json','*/diagnostics.json']:
         files.update(base.HERE.glob(pattern))
     for file in sorted(files):
-        if file.exists():collect(json.loads(file.read_text(encoding='utf-8-sig')));sources[str(file.relative_to(base.HERE))]=base.sha(file)
+        if file.exists():collect(_local_json_loads(file.read_text(encoding='utf-8-sig')));sources[str(file.relative_to(base.HERE))]=base.sha(file)
     clips=base.audit.pipeline.discover_clips(base.ROOT/'SLclean.sqlite3')
     pool=sorted({Path(c).stem for c in clips}&vocab-seen)
     print(f'Excluded reported labels: {len(seen)}; eligible pool: {len(pool)}',flush=True)
@@ -64,8 +71,8 @@ def prepare():
     (OUT/'pre_results.json').write_text(json.dumps(dict(predictions=rows,summaries={v:base.metrics([r for r in rows if r['variant']==v],labels) for v in VS}),indent=2),encoding='utf-8')
 
 def score():
-    protocol=json.loads((OUT/'protocol.json').read_text());labels=protocol['labels'];_,predict=load_predictor()
-    cases={c['phrase']:c for c in json.loads((OUT/'review_inputs.json').read_text())};captures=json.loads((OUT/'renderer/rendered.json').read_text());assert len(captures)==60
+    protocol=_local_json_loads((OUT/'protocol.json').read_text());labels=protocol['labels'];_,predict=load_predictor()
+    cases={c['phrase']:c for c in _local_json_loads((OUT/'review_inputs.json').read_text())};captures=_local_json_loads((OUT/'renderer/rendered.json').read_text());assert len(captures)==60
     rows=[]
     for cap in captures:
         assert cap['variant']=='S1A1'

@@ -4,6 +4,13 @@ Uses original upstream architecture and normalization. The sole in-memory
 adaptations replace OmegaConf conversion with a plain config dictionary and
 the relative graph import. Checkpoint tensors are loaded strictly. No training.
 """
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import argparse
 import hashlib
 import importlib.util
@@ -62,7 +69,7 @@ def load_model():
     decoder.load_state_dict({k.removeprefix('model.decoder.classifier.'): v for k, v in sd.items() if k.startswith('model.decoder.classifier.')}, strict=True)
     network = torch.nn.Sequential(encoder, decoder).eval()
     metadata = zipfile.ZipFile(HERE/'wlasl_metadata.zip')
-    labels = sorted(v['gloss'] for v in json.loads(metadata.read('splits/asl2000.json')))
+    labels = sorted(v['gloss'] for v in _local_json_loads(metadata.read('splits/asl2000.json')))
     transforms = module('audit_transforms', 'upstream_pose_transforms.py')
     normalizer = transforms.CenterAndScaleNormalize(reference_points_preset='shoulder_mediapipe_holistic_minimal_27')
     return network, normalizer, labels
@@ -113,8 +120,8 @@ def prepare(count):
 def run(data_dir=None):
     audit_dir=Path(data_dir) if data_dir is not None else HERE
     network, normalize, labels = load_model()
-    cases = json.loads((audit_dir/'inputs.json').read_text())
-    rendered = {r['phrase']:r['samples'] for r in json.loads((audit_dir/'rendered.json').read_text())} if (audit_dir/'rendered.json').exists() else {}
+    cases = _local_json_loads((audit_dir/'inputs.json').read_text())
+    rendered = {r['phrase']:r['samples'] for r in _local_json_loads((audit_dir/'rendered.json').read_text())} if (audit_dir/'rendered.json').exists() else {}
     predictions = []
     def predict(data, label, variant):
         tensor = torch.from_numpy(np.asarray(data,dtype=np.float32)[:,PICK,:].transpose(2,0,1).copy())

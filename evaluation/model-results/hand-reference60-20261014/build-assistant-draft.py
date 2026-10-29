@@ -1,9 +1,16 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 from collections import Counter
 from PIL import Image,ImageDraw
 O=Path(__file__).resolve().parent
-read=lambda n:json.loads((O/n).read_text(encoding='utf-8'))
+read=lambda n:_local_json_loads((O/n).read_text(encoding='utf-8'))
 data=read('manifest.json');tr=read('draft-transforms.json');obs=read('assistant-draft-observations.json');records=[]
 assert len(obs['categories'])==len(data['samples'])==60
 for i,s in enumerate(data['samples']):

@@ -1,4 +1,11 @@
 """Reuse the audited stdlib geometry evaluator with IK-specific payloads."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 from pathlib import Path
 audit_dir=Path(__file__).resolve().parent
 code=(audit_dir/'step1b_geometry.py').read_text(encoding='utf-8').split("lines=['#")[0]
@@ -9,7 +16,7 @@ code=code.replace("(HERE/'inputs.json')","(OUT/'inputs.json')").replace('==7*len
 code=code.replace("for variant in ['S0A1','S1A1']:","for variant in ['BASELINE']:").replace("old[variant,case['phrase']]","old['S1A1',case['phrase']]")
 code=code.replace("frame=case['payload']['frames'][case['frameIndices'][t]]","frame=case['ikPayload' if variant=='IK' else 'payload']['frames'][case['frameIndices'][t]]")
 exec(compile(code,'ik_geometry_adaptation','exec'),globals())
-records=[r for case in json.loads((OUT/'arm_metrics.json').read_text()) for r in case['records']]
+records=[r for case in _local_json_loads((OUT/'arm_metrics.json').read_text()) for r in case['records']]
 arm=dict(active_hand_frames=len(records),clamped_percent=100*sum(r['clamped'] for r in records)/len(records),mean_target_shift=statistics.mean(r['target_shift'] for r in records),p95_target_shift=percentile([r['target_shift'] for r in records],.95),mean_elbow_shift=statistics.mean(r['elbow_shift'] for r in records),old_mean_length_deviation_percent=statistics.mean([r[k] for r in records for k in ['old_upper_error','old_lower_error']])*100,new_max_length_error=max(r[k] for r in records for k in ['new_upper_error','new_lower_error']))
 temporal={}
 for mode in ['payload','ikPayload']:

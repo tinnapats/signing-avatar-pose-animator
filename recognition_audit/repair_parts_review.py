@@ -1,4 +1,11 @@
 """Score actual detailed-hand endpoints for the predeclared diagnostic subset."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import math
 import os
@@ -8,17 +15,17 @@ import torch
 import repair_parts200 as study
 
 OUT=Path(os.environ.get('PARTS_OUTPUT',str(study.OUT)))
-VS=json.loads(os.environ.get('PARTS_VARIANTS','["baseline","no_short_fill","no_hold","no_repair"]'))
+VS=_local_json_loads(os.environ.get('PARTS_VARIANTS','["baseline","no_short_fill","no_hold","no_repair"]'))
 
 def main():
-    result=json.loads((OUT/'results.json').read_text())
-    cases=json.loads((OUT/'review_inputs.json').read_text())
-    captures=json.loads((OUT/'renderer/rendered.json').read_text())
+    result=_local_json_loads((OUT/'results.json').read_text())
+    cases=_local_json_loads((OUT/'review_inputs.json').read_text())
+    captures=_local_json_loads((OUT/'renderer/rendered.json').read_text())
     assert len(cases)==len(captures)==len(study.REVIEW)*len(VS)
     mapping={c['phrase']:c for c in cases}
     model,norm,vocab=study.base.audit.load_model()
     rows=[]
-    original_captures={c['phrase']:c for c in json.loads((study.base.SOURCE/'rendered.json').read_text())}
+    original_captures={c['phrase']:c for c in _local_json_loads((study.base.SOURCE/'rendered.json').read_text())}
     for capture in captures:
         c=mapping[capture['phrase']];label=c['label'];v=c['variant']
         frames=c['payload']['frames'][::2];samples=capture['samples'];assert len(samples)==len(frames)
@@ -47,7 +54,7 @@ def main():
             observed_low_confidence=sum(bool(f['hands'][s].get('observed')) and 0<float(f['hands'][s].get('score',0))<0.05 for f in frames for s in ['left','right']),
             payload_coverage=c['coverage']))
     summaries={v:study.base.metrics([r for r in rows if r['variant']==v],study.REVIEW) for v in VS}
-    assert study.base.production()==json.loads((OUT/'protocol.json').read_text())['production']
+    assert study.base.production()==_local_json_loads((OUT/'protocol.json').read_text())['production']
     (OUT/'renderer_review.json').write_text(json.dumps(dict(summaries=summaries,predictions=rows,
         baseline_capture_exact=True,production_unchanged=True,
         caveat='Selected12 diagnostic only. Actual detailed-hand endpoints + payload body, not RGB recognition; native fallback excluded.'),indent=2),encoding='utf-8')
@@ -59,7 +66,7 @@ def main():
         stats[v]=dict(bone_span_mean=float(np.mean([r['geometry']['mean_bone_span'] for r in rr if r['geometry']['mean_bone_span'] is not None])),
             bend_over115_mean=float(np.mean([r['geometry']['bend_over115_fraction'] for r in rr if r['geometry']['bend_over115_fraction'] is not None])))
     look={(r['label'],r['variant']):r for r in result['predictions']}
-    labels=json.loads((OUT/'protocol.json').read_text())['labels']
+    labels=_local_json_loads((OUT/'protocol.json').read_text())['labels']
     for i,a in enumerate(VS):
         for b in VS[i+1:]:
             gained=[l for l in labels if look[l,a]['prediction']!=l and look[l,b]['prediction']==l]

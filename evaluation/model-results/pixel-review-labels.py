@@ -1,7 +1,14 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 O=Path(__file__).resolve().parent/'pixel-only-plan-20261012'
-samples=json.loads((O/'review_samples.json').read_text(encoding='utf-8'));labels=[]
+samples=_local_json_loads((O/'review_samples.json').read_text(encoding='utf-8'));labels=[]
 for r in samples:
  cid=r['id'];i=r['frame']
  styles={'149':['flat','flat'],'125':['flat','outlined' if i!=69 else 'flat'],'195':['flat','flat'],'045':['flat','outlined'],'122':['flat','outlined'],'147':['outlined','outlined'],'178':['flat','flat'],'057':['outlined','outlined']}[cid]

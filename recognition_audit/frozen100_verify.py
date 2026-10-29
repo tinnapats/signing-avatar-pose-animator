@@ -1,10 +1,17 @@
 """Independent data invariants; no model scoring or parameter changes."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
 import bounded_forearm200 as trial
 HERE=trial.HERE;OUT=HERE/'frozen100_20261005'
-def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def read(p):return _local_json_loads(p.read_text(encoding='utf-8'))
 p=read(OUT/'protocol.json');index=read(OUT/'case_index.json');assert len(index)==300
 assert not set(p['labels'])&set(p['excluded']);assert len(set(p['labels']))==100
 maxbone=0.;maxbody=0.;lengths=[]

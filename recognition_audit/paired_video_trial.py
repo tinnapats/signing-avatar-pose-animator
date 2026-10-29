@@ -1,4 +1,11 @@
 """Known-video pilot, isolated from production database. No manual clip matching."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import csv
 import hashlib
 import json
@@ -13,7 +20,7 @@ OUT=HERE/'paired_video'
 WORDS=['motivate','continue','earn']
 
 def download():
-    metadata=json.loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
+    metadata=_local_json_loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
     by={r['gloss']:r['instances'] for r in metadata}
     (OUT/'videos').mkdir(parents=True,exist_ok=True)
     selected=[]
@@ -38,7 +45,7 @@ def download():
 def extract():
     import cv2
     import mediapipe as mp
-    manifest=json.loads((OUT/'manifest.json').read_text())
+    manifest=_local_json_loads((OUT/'manifest.json').read_text())
     (OUT/'csv').mkdir(exist_ok=True)
     for item in manifest:
         cached=OUT/'csv'/(item['word']+'.csv')
@@ -76,7 +83,7 @@ def build():
     from run_audit import pipeline,csv_array
     from step1_evaluate import hashes
     before=hashes();cases=[]
-    manifest=json.loads((OUT/'manifest.json').read_text())
+    manifest=_local_json_loads((OUT/'manifest.json').read_text())
     for item in manifest:
         word=item['word'];path=OUT/'csv'/(word+'.csv')
         payload=pipeline.build_payload(OUT/'csv',[word+'.csv'],'',30,513,513,0,0,2,1.2,2)
@@ -98,7 +105,7 @@ def browser_copies():
     import subprocess
     import imageio_ffmpeg
     import cv2
-    manifest=json.loads((OUT/'manifest.json').read_text())
+    manifest=_local_json_loads((OUT/'manifest.json').read_text())
     for item in manifest:
         target=OUT/'videos'/(item['word']+'_browser.mp4')
         subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(),'-n','-i',item['local_video'],'-an','-c:v','libx264','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart',str(target)],check=True,capture_output=True)

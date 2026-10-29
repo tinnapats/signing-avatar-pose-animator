@@ -1,4 +1,11 @@
 """Unlabelled calibration200 -> disjoint evaluation100; immutable base model."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import copy,json
 from pathlib import Path
 import numpy as np
@@ -8,7 +15,7 @@ from equal_duration_trial import arrays
 from repeat_original30 import production,sha
 from extend_original60 import metrics
 HERE=Path(__file__).resolve().parent;SRC=HERE/'slgcn200_20261002';TEST=HERE/'frozen100_20261005';OUT=HERE/'domain_bn_pilot_20261005'
-def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def read(p):return _local_json_loads(p.read_text(encoding='utf-8'))
 def write(p,x):p.write_text(json.dumps(x,ensure_ascii=False,indent=2),encoding='utf-8')
 def main():
     assert not OUT.exists();before=production();traincases=read(SRC/'inputs.json');tcaps={c['phrase']:c for c in read(SRC/'renderer/rendered.json')};trainlabels=[c['label'] for c in traincases];tp=read(TEST/'protocol.json');testlabels=tp['labels'];assert len(trainlabels)==200 and len(testlabels)==100 and not set(trainlabels)&set(testlabels)

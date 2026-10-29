@@ -1,4 +1,11 @@
 """Prospective frozen 100-label comparison; isolated from production."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import copy,json,random,sys,zipfile,math
 from pathlib import Path
 from unittest.mock import patch
@@ -9,11 +16,11 @@ from equal_duration_trial import arrays
 from novel_words30 import load_predictor
 base=trial.base;HERE=trial.HERE;OUT=HERE/'frozen100_20261005'
 VS=['BASE','SIZE_ONLY','BOUNDED_SIZE']
-def read(p):return json.loads(p.read_text(encoding='utf-8-sig'))
+def read(p):return _local_json_loads(p.read_text(encoding='utf-8-sig'))
 def write(p,x):p.write_text(json.dumps(x,ensure_ascii=False,indent=2),encoding='utf-8')
 def prepare():
     assert not OUT.exists(),'Do not replace frozen experiment'
-    vocab=set(v['gloss'] for v in json.loads(zipfile.ZipFile(HERE/'wlasl_metadata.zip').read('splits/asl2000.json')))
+    vocab=set(v['gloss'] for v in _local_json_loads(zipfile.ZipFile(HERE/'wlasl_metadata.zip').read('splits/asl2000.json')))
     seen=set();hashes={}
     names={'label','phrase','actual','gloss','labels_evaluated','labels','original_words','added_words','review','words'}
     def collect(x,k=''):

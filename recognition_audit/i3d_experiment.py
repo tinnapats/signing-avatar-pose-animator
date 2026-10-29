@@ -1,4 +1,11 @@
 """Canvas pixels only; WLASL I3D. No source-pose inference or model tuning."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import importlib.util
 import io
@@ -21,9 +28,9 @@ def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 
 def prepare():
     assert not (OUT/'protocol.json').exists()
-    cases=json.loads((HERE/'inputs.json').read_text());assert len(cases)==30
-    splits=json.loads((OUT/'nslt_2000.json').read_text())
-    meta=json.loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
+    cases=_local_json_loads((HERE/'inputs.json').read_text());assert len(cases)==30
+    splits=_local_json_loads((OUT/'nslt_2000.json').read_text())
+    meta=_local_json_loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
     labels={}
     for r in meta:
         ids={splits[i['video_id']]['action'][0] for i in r['instances'] if i['video_id'] in splits}
@@ -41,14 +48,14 @@ def prepare():
     (OUT/'protocol.json').write_text(json.dumps(protocol,indent=2));print('Frozen 30 production clips, full 2000 labels, no answer text',flush=True)
 
 def run():
-    protocol=json.loads((OUT/'protocol.json').read_text());assert hashes()==protocol['production_hashes']
+    protocol=_local_json_loads((OUT/'protocol.json').read_text());assert hashes()==protocol['production_hashes']
     assert digest(OUT/'archived.zip')==protocol['archive_sha256']
     torch.set_num_threads(4)
     spec=importlib.util.spec_from_file_location('official_i3d',OUT/'pytorch_i3d.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
     model=mod.InceptionI3d(2000,in_channels=3)
     with zipfile.ZipFile(OUT/'archived.zip') as z:state=torch.load(io.BytesIO(z.read(CKPT)),map_location='cpu',weights_only=True)
     model.load_state_dict(state,strict=True);model.eval()
-    labels=json.loads((OUT/'labels.json').read_text());captures=json.loads((OUT/'capture_manifest.json').read_text())
+    labels=_local_json_loads((OUT/'labels.json').read_text());captures=_local_json_loads((OUT/'capture_manifest.json').read_text())
     assert [r['phrase'] for r in captures]==protocol['words']
     rows=[]
     for case in captures:

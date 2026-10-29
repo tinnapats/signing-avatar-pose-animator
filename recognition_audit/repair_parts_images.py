@@ -1,10 +1,17 @@
 """Arrange actual Canvas captures, no synthesized poses."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 from pathlib import Path
 import os
 import json
 from PIL import Image, ImageDraw
 OUT=Path(os.environ.get('PARTS_OUTPUT',str(Path(__file__).resolve().parent/'repair_parts200')))
-VS=json.loads(os.environ.get('PARTS_VARIANTS','["baseline","no_short_fill","no_hold","no_repair"]'))
+VS=_local_json_loads(os.environ.get('PARTS_VARIANTS','["baseline","no_short_fill","no_hold","no_repair"]'))
 for label in ['never','parents','hurry']:
     folders=[OUT/'renderer/frames'/f'{label}__{v}' for v in VS]
     files=[sorted(f.glob('*.png')) for f in folders]

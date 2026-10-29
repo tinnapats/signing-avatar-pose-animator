@@ -1,3 +1,10 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,importlib.util,time
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -13,7 +20,7 @@ import run_audit as audit
 spec=importlib.util.spec_from_file_location('rtm_eval',ROOT.parent/'rtm-eval.py')
 ev=importlib.util.module_from_spec(spec); spec.loader.exec_module(ev)
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-rows=json.loads((P/'results.json').read_text()); z=np.load(D/'predictions.npz')
+rows=_local_json_loads((P/'results.json').read_text()); z=np.load(D/'predictions.npz')
 variants=['raw','sd_anchor','sd_temporal','rtmw_anchor','rtmw_temporal']
 protocol={'status':'registered','python':sys.version,'torch':torch.__version__,
  'checkpoint_archive_sha256':sha(A/'wlasl_stgcn.zip'),'metadata_sha256':sha(A/'wlasl_metadata.zip'),
@@ -33,7 +40,7 @@ probe=np.arange(266,dtype=np.float32).reshape(1,133,2)
 expected=[0,1,2,5,6,7,8]+[91+j for j in [0,4,5,8,9,12,13,16,17,20]]+[112+j for j in [0,4,5,8,9,12,13,16,17,20]]
 assert np.array_equal(ev.convert(probe,np.ones((1,133)))[:,audit.PICK],probe[:,expected])
 pred={v:[] for v in variants}; controls=[]; arrays={}; logits={}
-old=json.loads((B/'rtm_trial_20261008/results.json').read_text())
+old=_local_json_loads((B/'rtm_trial_20261008/results.json').read_text())
 for cid,label in [('000','abdomen'),('001','hello'),('002','love')]:
     indices=[i for i,r in enumerate(rows) if r['id']==cid]
     assert [rows[i]['frame'] for i in indices]==list(range(len(indices)))

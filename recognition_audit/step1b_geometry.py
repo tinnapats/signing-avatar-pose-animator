@@ -1,4 +1,11 @@
 """Geometry-only fallback. Does not import or bypass blocked PyTorch DLLs."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import json
 import math
@@ -16,12 +23,12 @@ def percentile(values,p):
     v=sorted(values); index=(len(v)-1)*p; i=int(index); j=min(i+1,len(v)-1)
     return v[i]+(v[j]-v[i])*(index-i)
 
-cases=json.loads((HERE/'inputs.json').read_text())
-fits=json.loads((OUT/'reference_fit.json').read_text())
-capture=json.loads((OUT/'rendered.json').read_text())
+cases=_local_json_loads((HERE/'inputs.json').read_text())
+fits=_local_json_loads((OUT/'reference_fit.json').read_text())
+capture=_local_json_loads((OUT/'rendered.json').read_text())
 lookup={(r['variant'],r['phrase']):r['samples'] for r in capture}
 assert len(lookup)==7*len(cases)==210
-prior=json.loads((HERE/'step1/rendered.json').read_text())
+prior=_local_json_loads((HERE/'step1/rendered.json').read_text())
 old={(r['variant'],r['phrase']):r['samples'] for r in prior}
 for variant in ['S0A1','S1A1']:
     for case in cases:
@@ -56,7 +63,7 @@ for variant in NAMES:
                 if '0' in out and wrist['score']>=.2:
                     gaps.append(dist(out['0'],[wrist['position']['x'],wrist['position']['y']])/shoulder)
     rows.append(dict(variant=variant,points=len(position),pck5=100*sum(e<=.05 for e in position)/len(position),shape_pck20=100*sum(e<=.2 for e in shape)/len(shape),gap_mean=100*statistics.mean(gaps),gap_p95=100*percentile(gaps,.95),gap_within2=100*sum(e<=.02 for e in gaps)/len(gaps),new_f1=None))
-before=json.loads((OUT/'production_before.json').read_text())
+before=_local_json_loads((OUT/'production_before.json').read_text())
 after={f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in subprocess.check_output(['git','ls-files'],cwd=ROOT,text=True).splitlines() if (ROOT/f).is_file()}
 assert before==after,'Production files changed; do not attribute changes to experiment.'
 (OUT/'geometry_results.json').write_text(json.dumps(dict(results=rows,production_unchanged=True,baseline_coordinates_verified=True,f1_status='Blocked: Windows Application Control WinError 4551 loading torch_global_deps.dll'),indent=2),encoding='utf-8')

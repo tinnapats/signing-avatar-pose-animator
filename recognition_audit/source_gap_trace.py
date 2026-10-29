@@ -1,4 +1,11 @@
 """Read-only provenance and missing-hand trace; never infer sign boundaries."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import csv
 import hashlib
 import io
@@ -31,8 +38,8 @@ def spans(mask):
 
 def main():
     assert not OUT.exists();OUT.mkdir();before=production()
-    cases=[c for c in json.loads((SOURCE/'review_inputs.json').read_text()) if c['variant']=='control'];assert len(cases)==12
-    metadata={r['gloss']:r['instances'] for r in json.loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_text())}
+    cases=[c for c in _local_json_loads((SOURCE/'review_inputs.json').read_text()) if c['variant']=='control'];assert len(cases)==12
+    metadata={r['gloss']:r['instances'] for r in _local_json_loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_text())}
     db=sqlite3.connect((ROOT/'SLclean.sqlite3').as_uri()+'?mode=ro',uri=True)
     columns=[r[1] for r in db.execute('PRAGMA table_info(clips)')];dbmeta=dict(db.execute('SELECT key,value FROM metadata'))
     (OUT/'protocol.json').write_text(json.dumps(dict(production=before,labels=[c['label'] for c in cases],

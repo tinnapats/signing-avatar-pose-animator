@@ -1,8 +1,15 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
 from PIL import Image,ImageDraw
-D=Path(__file__).resolve().parent;O=D/'pixel-only-plan-20261012';B=D/'oracle200-20261011';manifest={c['id']:c for c in json.loads((B/'capture_manifest.json').read_text())};cases=[]
+D=Path(__file__).resolve().parent;O=D/'pixel-only-plan-20261012';B=D/'oracle200-20261011';manifest={c['id']:c for c in _local_json_loads((B/'capture_manifest.json').read_text())};cases=[]
 for p in sorted((O/'arrays').glob('*.npz')):
  z=np.load(p);where=np.argwhere(z['flags'])
  if len(where):

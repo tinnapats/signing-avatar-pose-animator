@@ -1,8 +1,15 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib,shutil,sqlite3,zipfile,random
 from pathlib import Path
 import numpy as np
 D=Path(__file__).resolve().parent;B=D/'oracle200-20261011';P=D/'pixel-only-plan-20261012';O=D/'independent-check-20261012';A=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit')
-read=lambda p:json.loads(p.read_text(encoding='utf-8-sig'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8-sig'))
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 def save(p,x):p.write_text(json.dumps(x,ensure_ascii=False,indent=2),encoding='utf-8')
 assert not (O/'annotations.json').exists(),'Do not overwrite annotation work'
@@ -32,7 +39,7 @@ old=D/'body-reference-v1-20261009';js=(old/'annotator.js').read_text(encoding='u
 html=(old/'annotator.html').read_text(encoding='utf-8').replace('ลงจุดอ้างอิงไหล่–ศอก–ข้อมือ','ตรวจข้อต่อมือ 21 จุดต่อข้าง และไหล่–ศอก').replace('ปุ่ม 1–6 เลือกจุด','ปุ่ม 1–6 เลือกหกจุดแรก').replace('.joints{display:grid;','.joints{max-height:260px;overflow:auto;display:grid;').replace('<p>ข้อมือ:','<p>มือจุด 0 = ข้อมือ; 1–4 นิ้วโป้ง; 5–8 นิ้วชี้; 9–12 นิ้วกลาง; 13–16 นิ้วนาง; 17–20 นิ้วก้อย เรียงจากโคนนิ้วถึงปลาย จุดที่ไม่เห็นห้ามเดา</p><p>ข้อมือ:')
 (O/'annotator.html').write_text(html,encoding='utf-8')
 # Read-only database inventory; exclude labels found in historical experiment manifests/results.
-vocab={x['gloss'] for x in json.loads(zipfile.ZipFile(A/'wlasl_metadata.zip').read('splits/asl2000.json'))};seen={c['label'] for c in manifest};sources={};skipped=[]
+vocab={x['gloss'] for x in _local_json_loads(zipfile.ZipFile(A/'wlasl_metadata.zip').read('splits/asl2000.json'))};seen={c['label'] for c in manifest};sources={};skipped=[]
 fields={'label','phrase','actual','gloss','labels_evaluated','labels','original_words','added_words','words','original_labels','added_labels'}
 def collect(x,key=''):
  if isinstance(x,str) and key in fields and x in vocab:seen.add(x)

@@ -1,10 +1,17 @@
 """Contact sheets from actual browser screenshots, selected by wrist discrepancy."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
 from PIL import Image,ImageDraw
 HERE=Path(__file__).resolve().parent;OUT=HERE/'scale_anchor200_20261003'
-p=json.loads((OUT/'protocol.json').read_text());g=json.loads((OUT/'geometry.json').read_text())['rows']
+p=_local_json_loads((OUT/'protocol.json').read_text());g=_local_json_loads((OUT/'geometry.json').read_text())['rows']
 rank=sorted([r for r in g if r['variant']=='A' and r['label'] in p['review'] and r['wrist_to_pose_wrist_shoulders'] is not None],key=lambda r:r['wrist_to_pose_wrist_shoulders'],reverse=True)[:3]
 records=[]
 for r in rank:

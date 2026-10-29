@@ -1,4 +1,11 @@
 """Summarize the controlled experiment, including paired uncertainty."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import json
 import math
@@ -9,8 +16,8 @@ HERE=Path(__file__).resolve().parent
 OUT=HERE/'preprocessing_control'
 
 def main():
-    result=json.loads((OUT/'results.json').read_text())
-    manifest=json.loads((HERE/'recognition_100/manifest.json').read_text())
+    result=_local_json_loads((OUT/'results.json').read_text())
+    manifest=_local_json_loads((HERE/'recognition_100/manifest.json').read_text())
     old,new=result['summaries']
     rows=result['predictions']
     changes=np.array([int(rows[i+1]['label']==rows[i+1]['prediction'])-int(rows[i]['label']==rows[i]['prediction']) for i in range(0,len(rows),2)])
@@ -21,7 +28,7 @@ def main():
     p=min(1.,2*sum(math.comb(discordant,k) for k in range(min(g,l)+1))/2**discordant) if discordant else 1.
     coverage=[]
     for item in manifest:
-        fresh=json.loads((OUT/(item['metadata']['video_id']+'.json')).read_text())
+        fresh=_local_json_loads((OUT/(item['metadata']['video_id']+'.json')).read_text())
         for side in ['pose','left_hand','right_hand']:
             coverage.append(dict(word=item['word'],side=side,frames=fresh['frames'],
                 old=item['extraction']['detected_frames'][side],new=fresh['detected_frames'][side]))

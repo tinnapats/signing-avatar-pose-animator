@@ -1,4 +1,11 @@
 """Same seven-condition protocol: frozen original60 + 140 preselected clips."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import argparse
 from collections import Counter
 import gc
@@ -15,14 +22,14 @@ HERE=Path(__file__).resolve().parent
 ROOT=HERE.parent
 OLD=HERE/'original_method60_20260930'
 OUT=HERE/'original_method200_20260930'
-NODE='C:/Users/newtu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe'
+NODE='C:/Users/newtu/signing-avatar-github-newton-upload/local_runtime/node/node.exe'
 
 def prepare():
     assert not OUT.exists(),'Refuse to overwrite an existing experiment'
-    prior=json.loads((OLD/'provenance.json').read_text())
+    prior=_local_json_loads((OLD/'provenance.json').read_text())
     assert production()==prior['production_before'],'Production differs from original60'
     for name,h in prior['hashes'].items():assert sha(HERE/name)==h,name
-    cases=json.loads((OLD/'inputs.json').read_text());old=[c['phrase'] for c in cases]
+    cases=_local_json_loads((OLD/'inputs.json').read_text());old=[c['phrase'] for c in cases]
     assert len(old)==len(set(old))==60
     db=ROOT/'SLclean.sqlite3';clips=audit.pipeline.discover_clips(db)
     pool=sorted(Path(n).stem for n in clips if Path(n).stem not in old)
@@ -50,26 +57,26 @@ def prepare():
 def render():
     env=os.environ.copy();env.update(AUDIT_OUTPUT=str(OUT/'added140'),AUDIT_INPUTS=str(OUT/'added140/inputs.json'))
     subprocess.run([NODE,str(HERE/'render_hands.mjs')],cwd=ROOT,env=env,check=True)
-    old=json.loads((OLD/'rendered.json').read_text());new=json.loads((OUT/'added140/rendered.json').read_text())
+    old=_local_json_loads((OLD/'rendered.json').read_text());new=_local_json_loads((OUT/'added140/rendered.json').read_text())
     assert len(old)==60 and len(new)==140
     (OUT/'rendered.json').write_text(json.dumps(old+new),encoding='utf-8')
 
 def run():
-    p=json.loads((OUT/'provenance.json').read_text())
+    p=_local_json_loads((OUT/'provenance.json').read_text())
     assert production()==p['production_before']
     for n,h in p['hashes'].items():assert sha(HERE/n)==h,n
     for n,h in p['original60_hashes'].items():assert sha(OLD/n)==h,n
-    cases=json.loads((OUT/'inputs.json').read_text())
-    assert cases[:60]==json.loads((OLD/'inputs.json').read_text())
+    cases=_local_json_loads((OUT/'inputs.json').read_text())
+    assert cases[:60]==_local_json_loads((OLD/'inputs.json').read_text())
     assert [c['phrase'] for c in cases]==p['original_words']+p['added_words']
     del cases;gc.collect()
-    captures=json.loads((OUT/'rendered.json').read_text());assert len(captures)==200
+    captures=_local_json_loads((OUT/'rendered.json').read_text());assert len(captures)==200
     assert [c['phrase'] for c in captures]==p['original_words']+p['added_words']
     del captures;gc.collect()
     audit.run(OUT)
-    r=json.loads((OUT/'results.json').read_text());rows=r['predictions'];assert len(rows)==1400
+    r=_local_json_loads((OUT/'results.json').read_text());rows=r['predictions'];assert len(rows)==1400
     lookup={(x['label'],x['variant']):x for x in rows}
-    for old in json.loads((OLD/'results.json').read_text())['predictions']:
+    for old in _local_json_loads((OLD/'results.json').read_text())['predictions']:
         new=lookup[old['label'],old['variant']]
         assert all(new[k]==old[k] for k in ['prediction','top5','target_probability']),'Original60 changed'
     for label in r['labels_evaluated']:

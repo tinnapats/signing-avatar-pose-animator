@@ -1,3 +1,10 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,zipfile,hashlib
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -7,7 +14,7 @@ import run_audit as audit
 import torch,yaml,numpy as np
 out=Path(__file__).parent/'model-input';out.mkdir(exist_ok=True)
 source=root/'slgcn200_20261002/cases/001.json'
-c=json.loads(source.read_text());assert c['label']=='hello'
+c=_local_json_loads(source.read_text());assert c['label']=='hello'
 frames=[c['payload']['frames'][j] for j in c['frameIndices']]
 a=audit.frame_array(frames)[:,audit.PICK,:]
 transforms=audit.module('input_example_transforms','upstream_pose_transforms.py')

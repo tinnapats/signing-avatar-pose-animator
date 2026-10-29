@@ -1,4 +1,11 @@
 """Change only Holistic complexity; frozen videos, ST-GCN and native FPS."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import json
 from pathlib import Path
@@ -17,7 +24,7 @@ def extract():
     import mediapipe as mp
     import numpy as np
     OUT.mkdir(exist_ok=True)
-    manifest = json.loads((DATA/'manifest.json').read_text())
+    manifest = _local_json_loads((DATA/'manifest.json').read_text())
     protocol = dict(change='Holistic model_complexity 1 -> 2 only', sample='Same frozen 100 clips, all frames, original FPS',
         no_tuning=True, mediapipe=mp.__version__, opencv=cv2.__version__,
         inputs_sha256=digest(DATA/'inputs.json'), results_sha256=digest(DATA/'results.json'),
@@ -25,7 +32,7 @@ def extract():
         settings=dict(static_image_mode=False, model_complexity=2, smooth_landmarks=True, enable_segmentation=False,
                       refine_face_landmarks=False, min_detection_confidence=.5, min_tracking_confidence=.5))
     if (OUT/'protocol.json').exists():
-        assert json.loads((OUT/'protocol.json').read_text()) == protocol
+        assert _local_json_loads((OUT/'protocol.json').read_text()) == protocol
     else:
         (OUT/'protocol.json').write_text(json.dumps(protocol, indent=2))
     for i,item in enumerate(manifest):
@@ -63,12 +70,12 @@ def evaluate():
     import run_audit as audit
     from step1_evaluate import hashes
     before=hashes()
-    protocol=json.loads((OUT/'protocol.json').read_text())
+    protocol=_local_json_loads((OUT/'protocol.json').read_text())
     assert digest(DATA/'inputs.json')==protocol['inputs_sha256']
     assert digest(DATA/'results.json')==protocol['results_sha256']
-    cases=json.loads((DATA/'inputs.json').read_text())
-    old=json.loads((DATA/'results.json').read_text())
-    manifest=json.loads((DATA/'manifest.json').read_text())
+    cases=_local_json_loads((DATA/'inputs.json').read_text())
+    old=_local_json_loads((DATA/'results.json').read_text())
+    manifest=_local_json_loads((DATA/'manifest.json').read_text())
     assert len(cases)==len(manifest)==100
     network,normalize,labels=audit.load_model()
     assert digest(HERE/'wlasl_stgcn.zip')==old['checkpoint_sha256']

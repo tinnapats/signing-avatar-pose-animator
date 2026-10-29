@@ -1,4 +1,11 @@
 """Frozen best-pipeline 200-word rendered comparison; isolated and resumable."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import math
 import sys
@@ -12,13 +19,13 @@ from equal_duration_trial import arrays
 base=pilot.base;HERE=base.HERE;OUT=HERE/'slgcn200_20261002';OLD=HERE/'combined_winners200'
 
 def check():
-    p=json.loads((OUT/'protocol.json').read_text());assert base.production()==p['production']
+    p=_local_json_loads((OUT/'protocol.json').read_text());assert base.production()==p['production']
     for name,h in p['hashes'].items():assert base.sha(HERE/name)==h,name
     db=base.ROOT/'SLclean.sqlite3';assert [db.stat().st_size,db.stat().st_mtime_ns]==p['db_stat']
     return p
 
 def prepare():
-    oldp=json.loads((OLD/'protocol.json').read_text());labels=oldp['labels'];assert len(labels)==200
+    oldp=_local_json_loads((OLD/'protocol.json').read_text());labels=oldp['labels'];assert len(labels)==200
     if not OUT.exists():
         OUT.mkdir();(OUT/'cases').mkdir()
         names=['combined_winners200/results.json','combined_winners200/protocol.json','combined_winners200/review_inputs.json','combined_winners200/renderer/rendered.json','wlasl_stgcn.zip','wlasl_metadata.zip','slgcn_trial_20261002/wlasl_slgcn.zip','slgcn_trial_20261002/upstream_decoupled_gcn.py','slgcn_trial_20261002/upstream_graph_utils.py','compare_slgcn_best.py','compare_slgcn200.py','slgcn200_render.mjs']
@@ -29,11 +36,11 @@ def prepare():
             note='Same development200 selected before experiment. Not independent holdout; checkpoint training overlap unknown. No tuning, ensemble, sample exclusion, or word routing. Two paired tests with Bonferroni2.')
         (OUT/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
     p=check();assert labels==p['labels']
-    reviews={c['label']:c for c in json.loads((OLD/'review_inputs.json').read_text()) if c['variant']=='no_hold_no_smoothing'}
+    reviews={c['label']:c for c in _local_json_loads((OLD/'review_inputs.json').read_text()) if c['variant']=='no_hold_no_smoothing'}
     allcases=[]
     for i,label in enumerate(labels):
         path=OUT/'cases'/f'{i:03d}.json'
-        if path.exists():c=json.loads(path.read_text());assert c['label']==label
+        if path.exists():c=_local_json_loads(path.read_text());assert c['label']==label
         else:
             with patch.object(base.audit.pipeline,'repair_hand_tracks',parts.make_repair(True,False)):
                 payload=base.audit.pipeline.build_payload(base.ROOT/'SLclean.sqlite3',[label+'.csv'],'',30,513,513,0,0,2,1.2,2,hand_gaussian_sigma=0,hand_gaussian_radius=0)
@@ -48,22 +55,22 @@ def prepare():
 
 def score():
     protocol=check();assert not (OUT/'results.json').exists()
-    assert base.sha(OUT/'inputs.json')==json.loads((OUT/'input_hash.json').read_text())['sha256']
+    assert base.sha(OUT/'inputs.json')==_local_json_loads((OUT/'input_hash.json').read_text())['sha256']
     caphash=base.sha(OUT/'renderer/rendered.json');capture_path=OUT/'capture_hash.json'
-    if capture_path.exists():assert json.loads(capture_path.read_text())['sha256']==caphash
+    if capture_path.exists():assert _local_json_loads(capture_path.read_text())['sha256']==caphash
     else:capture_path.write_text(json.dumps(dict(sha256=caphash)),encoding='utf-8')
-    caps={c['phrase']:c for c in json.loads((OUT/'renderer/rendered.json').read_text())};assert len(caps)==200
-    oldcaps={c['phrase']:c for c in json.loads((OLD/'renderer/rendered.json').read_text()) if c['variant']=='S1A1' and c['phrase'].endswith('__no_hold_no_smoothing')}
+    caps={c['phrase']:c for c in _local_json_loads((OUT/'renderer/rendered.json').read_text())};assert len(caps)==200
+    oldcaps={c['phrase']:c for c in _local_json_loads((OLD/'renderer/rendered.json').read_text()) if c['variant']=='S1A1' and c['phrase'].endswith('__no_hold_no_smoothing')}
     for name,old in oldcaps.items():assert caps[name]['samples']==old['samples'],'Prior diagnostic capture changed'
-    oldpre={r['label']:r for r in json.loads((OLD/'results.json').read_text())['predictions'] if r['variant']=='no_hold_no_smoothing'}
+    oldpre={r['label']:r for r in _local_json_loads((OLD/'results.json').read_text())['predictions'] if r['variant']=='no_hold_no_smoothing'}
     baseline,norm,vocab=base.audit.load_model();candidate,_=pilot.load_slgcn();rows=[];done=0
     progress=OUT/'progress.json'
     if progress.exists():
-        saved=json.loads(progress.read_text());rows=saved['predictions'];done=saved['completed'];assert len(rows)==done*6
+        saved=_local_json_loads(progress.read_text());rows=saved['predictions'];done=saved['completed'];assert len(rows)==done*6
         for i,r in enumerate(rows):assert r['label']==protocol['labels'][i//6]
     for i,label in enumerate(protocol['labels']):
         if i<done:continue
-        c=json.loads((OUT/'cases'/f'{i:03d}.json').read_text());assert c['label']==label
+        c=_local_json_loads((OUT/'cases'/f'{i:03d}.json').read_text());assert c['label']==label
         pre=base.audit.frame_array([c['payload']['frames'][j] for j in c['frameIndices']]);post=arrays(c,caps[c['phrase']]);idx=np.random.default_rng(20261002).permutation(len(post))
         for stage,a in [('pre',pre),('post',post),('shuffled',post[idx])]:
             t=torch.from_numpy(a[:,base.audit.PICK,:].transpose(2,0,1).copy());t=norm({'frames':t})['frames'].unsqueeze(0);assert torch.isfinite(t).all()

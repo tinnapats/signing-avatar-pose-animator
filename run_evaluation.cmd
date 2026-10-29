@@ -3,7 +3,6 @@ setlocal
 set "ROOT=%~dp0"
 if not defined SIGN_EVAL_PYTHON (
   set "SIGN_EVAL_PYTHON=%ROOT%.venv\Scripts\python.exe"
-  if not exist "%ROOT%.venv\Scripts\python.exe" set "SIGN_EVAL_PYTHON=%ROOT%..\signing-avatar-pose-animator\.venv\Scripts\python.exe"
   if defined SIGN_PYTHON set "SIGN_EVAL_PYTHON=%SIGN_PYTHON%"
 )
 if not exist "%SIGN_EVAL_PYTHON%" (

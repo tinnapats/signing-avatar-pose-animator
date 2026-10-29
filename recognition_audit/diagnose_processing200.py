@@ -1,4 +1,11 @@
 """Development ablation only: frozen200, unchanged ST-GCN; no production edits."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 from collections import Counter
 from contextlib import ExitStack
 import gc
@@ -41,13 +48,13 @@ def geometry(frames):
 
 def main():
     assert not (OUT/'results.json').exists(),'Finished results already exist'
-    before=production();cases=json.loads((SOURCE/'inputs.json').read_text());saved=json.loads((SOURCE/'results.json').read_text())
+    before=production();cases=_local_json_loads((SOURCE/'inputs.json').read_text());saved=_local_json_loads((SOURCE/'results.json').read_text())
     assert len(cases)==200;labels=[c['phrase'] for c in cases];old={(r['label'],r['variant']):r for r in saved['predictions']}
     OUT.mkdir(exist_ok=True);protocol=dict(variants=VARIANTS,labels=labels,production_before=before,
       source_inputs_hash=sha(SOURCE/'inputs.json'),source_results_hash=sha(SOURCE/'results.json'),
       note='Known200 development set; one component disabled per candidate, except gap group includes repair+taper. Not independent validation. No renderer changes or model training.')
     if (OUT/'protocol.json').exists():
-        assert json.loads((OUT/'protocol.json').read_text())==protocol,'Protocol or production changed'
+        assert _local_json_loads((OUT/'protocol.json').read_text())==protocol,'Protocol or production changed'
     else:(OUT/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
     network,normalize,vocabulary=audit.load_model();assert len(vocabulary)==2000
     assert all(l in vocabulary for l in labels)
@@ -68,7 +75,7 @@ def main():
     (OUT/'stage_transitions.json').write_text(json.dumps(transitions,indent=2),encoding='utf-8')
     predictions=[];checks=[];completed=0
     if (OUT/'progress.json').exists():
-        progress=json.loads((OUT/'progress.json').read_text());completed=progress['completed'];predictions=progress['predictions']
+        progress=_local_json_loads((OUT/'progress.json').read_text());completed=progress['completed'];predictions=progress['predictions']
         assert len(predictions)==completed*len(VARIANTS)
         for i,r in enumerate(predictions):
             assert r['label']==labels[i//len(VARIANTS)] and r['variant']==VARIANTS[i%len(VARIANTS)]

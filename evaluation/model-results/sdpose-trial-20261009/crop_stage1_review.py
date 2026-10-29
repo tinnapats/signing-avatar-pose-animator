@@ -1,10 +1,17 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
 import cv2
 ROOT=Path(__file__).resolve().parent;O=ROOT/'crop_stage1_20261011'
 B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007')
-manifest=json.loads((B/'capture_manifest.json').read_text())
+manifest=_local_json_loads((B/'capture_manifest.json').read_text())
 panels=[]
 for cid in ['001','002','005']:
  c=next(c for c in manifest if c['id']==cid);i=len(c['frames'])//2

@@ -1,4 +1,11 @@
 """Paired 2-D hand fidelity at original 30 Hz timestamps; no production edits."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import copy
 import hashlib
 import json
@@ -63,10 +70,10 @@ def tests():
 
 def main():
     tests(); OUT.mkdir(exist_ok=True); before=hashes()
-    original_protocol=json.loads((DATA/'protocol.json').read_text())
+    original_protocol=_local_json_loads((DATA/'protocol.json').read_text())
     assert before==original_protocol['production_hashes']
-    cases=json.loads((DATA/'inputs.json').read_text())
-    rendered={r['phrase']:r['samples'] for r in json.loads((DATA/'rendered.json').read_text())}
+    cases=_local_json_loads((DATA/'inputs.json').read_text())
+    rendered={r['phrase']:r['samples'] for r in _local_json_loads((DATA/'rendered.json').read_text())}
     allrows=[]; pooled={s:[] for s in ['source_to_processed','source_to_rendered','processed_to_rendered']}
     for case in cases:
         word=case['phrase']; state={}; build=pipeline.build_frames; fit=pipeline.fit_frames_to_canvas

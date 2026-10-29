@@ -1,8 +1,15 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 from PIL import Image,ImageDraw
 O=Path(__file__).resolve().parent
-samples=json.loads((O/'manifest.json').read_text())['samples'];trans=[]
+samples=_local_json_loads((O/'manifest.json').read_text())['samples'];trans=[]
 for page in range(5):
  sheet=Image.new('RGB',(1080,1440),'#eef1f4');d=ImageDraw.Draw(sheet)
  for local,s in enumerate(samples[page*12:page*12+12]):

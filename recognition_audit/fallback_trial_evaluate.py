@@ -1,4 +1,11 @@
 """Evaluate the isolated four-cell fallback ablation, not ASL accuracy."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import json
 from pathlib import Path
@@ -19,12 +26,12 @@ PRIOR_MAPPING={'S1A1':'baseline','S50A1':'scale_only'}
 CAP_VARIANTS=['cap_only','combined']
 
 def main():
-    diagnostic=json.loads((HERE/'method_review/diagnostics.json').read_text())
+    diagnostic=_local_json_loads((HERE/'method_review/diagnostics.json').read_text())
     actual={p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in diagnostic['production_hashes']}
     assert actual==diagnostic['production_hashes'],'Production changed'
-    captures=json.loads((OUT/'rendered.json').read_text())
+    captures=_local_json_loads((OUT/'rendered.json').read_text())
     lookup={(r['variant'],r['phrase']):r['samples'] for r in captures}
-    prior=json.loads((HERE/'method_review/rendered.json').read_text())
+    prior=_local_json_loads((HERE/'method_review/rendered.json').read_text())
     for r in prior:
         if r['variant'] not in PRIOR_MAPPING:continue
         v=PRIOR_MAPPING[r['variant']]

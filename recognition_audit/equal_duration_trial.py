@@ -1,4 +1,11 @@
 """Frozen, model-input-only temporal normalization; no new rendered frames."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import math
 import time
@@ -35,7 +42,7 @@ def main():
         idx=select_indices(n,64);assert len(idx)==64 and idx[0]==0 and idx[-1]==n-1 and np.all(np.diff(idx)>=0)
         assert np.array_equal(select_indices(n,n),np.arange(n)) if n>1 else True
     before=base.production();source=HERE/'original_method200_20260930'
-    cases=json.loads((source/'inputs.json').read_text());assert len(cases)==200
+    cases=_local_json_loads((source/'inputs.json').read_text());assert len(cases)==200
     lengths=[len(c['frameIndices']) for c in cases];target=max(2,int(np.floor(np.median(lengths)+.5)))
     OUT.mkdir()
     sources=[source/'inputs.json',source/'rendered.json',source/'results.json',HERE/'novel_words30_20261001/review_inputs.json',HERE/'novel_words30_20261001/renderer/rendered.json',HERE/'novel_words30_20261001/renderer_results.json']
@@ -63,13 +70,13 @@ def main():
         current=[r for r in rows if r['group']==group]
         summaries[group]=dict(metrics={v:base.metrics([r for r in current if r['variant']==v],labels) for v in ['original','equal_frames']},paired=paired(current,labels))
         (OUT/'progress.json').write_text(json.dumps(dict(summaries=summaries,predictions=rows),indent=2),encoding='utf-8')
-    caps={c['phrase']:c for c in json.loads((source/'rendered.json').read_text())}
-    saved={r['label']:r['prediction'] for r in json.loads((source/'results.json').read_text())['predictions'] if r['variant']=='rendered_hands_payload_body'}
+    caps={c['phrase']:c for c in _local_json_loads((source/'rendered.json').read_text())}
+    saved={r['label']:r['prediction'] for r in _local_json_loads((source/'results.json').read_text())['predictions'] if r['variant']=='rendered_hands_payload_body'}
     run('original200',cases,caps,saved)
     del cases,caps
     source30=HERE/'novel_words30_20261001'
-    cases=json.loads((source30/'review_inputs.json').read_text());caps={c['phrase']:c for c in json.loads((source30/'renderer/rendered.json').read_text())}
-    savedrows=json.loads((source30/'renderer_results.json').read_text())['predictions']
+    cases=_local_json_loads((source30/'review_inputs.json').read_text());caps={c['phrase']:c for c in _local_json_loads((source30/'renderer/rendered.json').read_text())}
+    savedrows=_local_json_loads((source30/'renderer_results.json').read_text())['predictions']
     for v in ['baseline','no_hold_no_smoothing']:
         run('prior30_'+v,[c for c in cases if c['variant']==v],caps,{r['label']:r['prediction'] for r in savedrows if r['variant']==v})
     assert base.production()==before

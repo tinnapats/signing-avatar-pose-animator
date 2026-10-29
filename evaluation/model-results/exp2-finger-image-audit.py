@@ -1,10 +1,17 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib
 from pathlib import Path
 from collections import Counter
 import numpy as np
 from PIL import Image,ImageDraw
 D=Path(__file__).resolve().parent;O=D/'exp2-finger-image-audit-20261014';B=D/'oracle200-20261011';R=D/'exp2-rejection-audit-20261014'
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 def save(n,o):(O/n).write_text(json.dumps(o,indent=2),encoding='utf-8')
 def rgb(p):
  im=Image.open(p).convert('RGBA');bg=Image.new('RGBA',im.size,'white');bg.alpha_composite(im);return bg.convert('RGB')

@@ -1,10 +1,17 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib
 from pathlib import Path
 from PIL import Image,ImageDraw
 D=Path(__file__).resolve().parent;O=D/'hand-reference60-20261014';B=D/'oracle200-20261011'
-rows=json.loads((D/'exp2-finger-image-audit-20261014/motion-diagnostics.json').read_text(encoding='utf-8'))['candidates']
-ids=json.loads((D/'exp2-fullhand20-20261014/selection.json').read_text())['ids']
-mf={c['id']:c['frames'] for c in json.loads((B/'capture_manifest.json').read_text())}
+rows=_local_json_loads((D/'exp2-finger-image-audit-20261014/motion-diagnostics.json').read_text(encoding='utf-8'))['candidates']
+ids=_local_json_loads((D/'exp2-fullhand20-20261014/selection.json').read_text())['ids']
+mf={c['id']:c['frames'] for c in _local_json_loads((B/'capture_manifest.json').read_text())}
 (O/'images').mkdir(parents=True,exist_ok=True)
 samples=[]
 for cid in ids:

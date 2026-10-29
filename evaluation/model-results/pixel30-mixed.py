@@ -1,10 +1,17 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib
 from pathlib import Path
 sys.dont_write_bytecode=True
 import numpy as np,torch
 B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');O=B/'mixed_body_hands';O.mkdir(exist_ok=True)
 sys.path.insert(0,str(B.parent));import run_audit as audit
-read=lambda p:json.loads(p.read_text(encoding='utf8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf8'))
 protocol=read(B/'protocol.json');refs=read(B/'mixed_reference.json');oldcaps={c['phrase']:c for c in read(B.parent/'slgcn200_20261002/renderer/rendered.json')};oldresults=read(B/'results.json')['predictions']
 model,norm,vocab=audit.load_model();rows=[];checks=[]
 names={'A':'ลำตัวจากภาพ + มือจากภาพ','B':'ลำตัวจากภาพ + มือ Renderer','C':'ลำตัว payload + มือจากภาพ','D':'ลำตัว payload + มือ Renderer','pixel_control':'ภาพล้วนเดิม ไม่ย้อนกล้อง'}

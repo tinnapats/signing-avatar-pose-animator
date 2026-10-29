@@ -2,8 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url));
-const {chromium}=await import(pathToFileURL('C:/Users/newtu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs'));
-const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+const {chromium}=await import(pathToFileURL('C:/Users/newtu/signing-avatar-github-newton-upload/frontend-tooling/node_modules/playwright/index.mjs'));
+const browser=await chromium.launch({headless:true,executablePath:'C:/Users/newtu/signing-avatar-github-newton-upload/local_runtime/chrome/chrome.exe'});
 try{
  const page=await browser.newPage({viewport:{width:1300,height:1050}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(pathToFileURL(path.join(here,'continuous_review_20261005_player.html')).href);

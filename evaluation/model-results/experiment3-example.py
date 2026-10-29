@@ -1,10 +1,17 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,zipfile,importlib.util
 from pathlib import Path
 sys.dont_write_bytecode=True
 import numpy as np
 import torch,yaml
 D=Path(__file__).resolve().parent;B=D/'oracle200-20261011';O=D/'experiment3-example-20261013';O.mkdir(exist_ok=True);A=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit');sys.path.insert(0,str(A));import run_audit as audit
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 s=importlib.util.spec_from_file_location('ev',D/'rtm-eval.py');ev=importlib.util.module_from_spec(s);s.loader.exec_module(ev)
 cid='001';cap=next(c for c in read(B/'capture_manifest.json') if c['id']==cid);assert cap['label']=='hello';ref=next(c for c in read(B/'coordinate_reference.json') if c['id']==cid)
 z=np.load(B/'rtm'/(cid+'.npz'));raw=ev.convert(z['rtmw_det'],z['rtmw_det_scores'])

@@ -1,4 +1,11 @@
 """Descriptive six-clip diagnosis. No threshold search or model routing."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib
 from pathlib import Path
 import numpy as np
@@ -8,7 +15,7 @@ O=ROOT/'hand_consistency_20261011';O.mkdir(exist_ok=True)
 assert not (O/'protocol.json').exists()
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 sources=[ROOT/'tracking3/results.json',ROOT/'confirmation3/results.json']
-rows=sum([json.loads(p.read_text()) for p in sources],[])
+rows=sum([_local_json_loads(p.read_text()) for p in sources],[])
 protocol={'status':'registered','scope':'All six available SDPose clips, no label-based exclusions',
  'confidence':.30,'features':'Same nearest RTMW body wrist for both hand wrists; own-body-wrist distance divided by shoulder span; hand-wrist separation / body-wrist separation.',
  'eligibility':'Both SDPose hands pass original mean+wrist .30; RTMW shoulders and wrists each >=.30; nonzero shoulder and body-wrist spans.',
@@ -35,7 +42,7 @@ for r in rows:
  features.append(f)
 # Evidence saved before references: neither reference nor true label enters a feature.
 (O/'features_before_reference.json').write_text(json.dumps(features,indent=2),encoding='utf-8')
-refs={c['id']:{s['index']:s for s in c['samples']} for c in json.loads((B/'coordinate_reference.json').read_text())}
+refs={c['id']:{s['index']:s for s in c['samples']} for c in _local_json_loads((B/'coordinate_reference.json').read_text())}
 samples=[]
 for r,f in zip(rows,features):
  ref=refs[r['id']][r['sourceIndex']];assert ref['pngMatches'] and ref['pixelRatio']==1

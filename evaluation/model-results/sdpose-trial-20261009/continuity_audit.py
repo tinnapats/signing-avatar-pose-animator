@@ -1,11 +1,18 @@
 """Trace actual hand input sources and bounded tracking opportunities, no imputation."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib
 from pathlib import Path
 import numpy as np
 ROOT=Path(__file__).resolve().parent;T=ROOT/'wrist_crop_tight20_20261011';O=ROOT/'continuity_20261011';O.mkdir(exist_ok=True)
 assert not (O/'protocol.json').exists()
 B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');R=B/'rtm_trial_20261008'
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 manifest=read(B/'capture_manifest.json');refs={c['id']:{f['index']:f for f in c['samples']} for c in read(B/'coordinate_reference.json')}
 save=lambda p,x:p.write_text(json.dumps(x,indent=2),encoding='utf-8')

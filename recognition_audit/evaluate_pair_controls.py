@@ -1,4 +1,11 @@
 """Factorial controls for known-video hand-pair geometry (not linguistic scores)."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import os
 from pathlib import Path
@@ -7,10 +14,10 @@ from trace_paired_stages import HERE,OUT,PAIRED,measure
 from run_audit import frame_array
 from step1_evaluate import hashes
 
-cases=json.loads((PAIRED/'inputs.json').read_text())
-trace={r['word']:r for r in json.loads((OUT/'results.json').read_text())}
+cases=_local_json_loads((PAIRED/'inputs.json').read_text())
+trace={r['word']:r for r in _local_json_loads((OUT/'results.json').read_text())}
 OUT=Path(os.environ.get('PAIR_CONTROL_OUTPUT',str(OUT)))
-capture={(r['variant'],r['phrase']):r['samples'] for r in json.loads((OUT/'rendered.json').read_text())}
+capture={(r['variant'],r['phrase']):r['samples'] for r in _local_json_loads((OUT/'rendered.json').read_text())}
 results=[]
 for case in cases:
     word=case['phrase'];frames=[case['payload']['frames'][i] for i in case['frameIndices']]
@@ -31,7 +38,7 @@ for case in cases:
         values=[measure(data[t]) for t in source]
         error=[abs(v['nearest_joint_distance']-source[t]['nearest_joint_distance']) for t,v in zip(source,values)]
         results.append(dict(word=word,variant=variant,n=len(source),mean_nearest_distance=float(np.mean([v['nearest_joint_distance'] for v in values])),mean_abs_nearest_distance_error=float(np.mean(error)),mean_wrist_gap=float(np.mean(gaps)),median_scale=float(np.median(scales))))
-assert hashes()==json.loads((PAIRED/'production_before.json').read_text())
+assert hashes()==_local_json_loads((PAIRED/'production_before.json').read_text())
 (OUT/'controls_results.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
 lines=['# แยกสาเหตุจาก renderer ด้วย 4 เงื่อนไข','', 'S = การปรับขนาดมือ, A = การยึดข้อมือกับแขน; 1 เปิด / 0 ปิด ทุกระยะหารความกว้างไหล่ ใช้เฟรมสองมือครบชุดเดียวกับ trace','', '| คำ | วิธี | จุดใกล้สุดเฉลี่ย | ความคลาดเคลื่อนระยะจากต้นทาง | Gap จุดข้อมือเฉลี่ย | Scale มัธยฐาน |','|---|---|---:|---:|---:|---:|']
 for r in results:lines.append(f"| {r['word']} | {r['variant']} | {r['mean_nearest_distance']:.4f} | {r['mean_abs_nearest_distance_error']:.4f} | {r['mean_wrist_gap']:.4f} | {r['median_scale']:.3f} |")

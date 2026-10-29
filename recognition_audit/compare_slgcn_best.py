@@ -1,4 +1,11 @@
 """Change only recognizer on frozen best-pipeline data; no production change."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import io
 import json
 import math
@@ -35,10 +42,10 @@ def load_slgcn():
 def main():
     assert not (OUT/'protocol.json').exists(),'Do not overwrite frozen protocol'
     before=base.production()
-    cases=[c for c in json.loads((DATA/'review_inputs.json').read_text()) if c['variant']=='no_hold_no_smoothing'];assert len(cases)==30
-    caps={c['phrase']:c for c in json.loads((DATA/'renderer/rendered.json').read_text()) if c['variant']=='S1A1'}
-    oldpre={r['label']:r['prediction'] for r in json.loads((DATA/'pre_results.json').read_text())['predictions'] if r['variant']=='no_hold_no_smoothing'}
-    oldpost={r['label']:r['prediction'] for r in json.loads((DATA/'renderer_results.json').read_text())['predictions'] if r['variant']=='no_hold_no_smoothing'}
+    cases=[c for c in _local_json_loads((DATA/'review_inputs.json').read_text()) if c['variant']=='no_hold_no_smoothing'];assert len(cases)==30
+    caps={c['phrase']:c for c in _local_json_loads((DATA/'renderer/rendered.json').read_text()) if c['variant']=='S1A1'}
+    oldpre={r['label']:r['prediction'] for r in _local_json_loads((DATA/'pre_results.json').read_text())['predictions'] if r['variant']=='no_hold_no_smoothing'}
+    oldpost={r['label']:r['prediction'] for r in _local_json_loads((DATA/'renderer_results.json').read_text())['predictions'] if r['variant']=='no_hold_no_smoothing'}
     files=[DATA/'review_inputs.json',DATA/'renderer/rendered.json',OUT/'wlasl_slgcn.zip',OUT/'upstream_decoupled_gcn.py',OUT/'upstream_graph_utils.py',HERE/'wlasl_stgcn.zip',HERE/'wlasl_metadata.zip',HERE/'compare_slgcn_best.py']
     protocol=dict(labels=[c['label'] for c in cases],pipeline='no_hold_no_smoothing; retain short fill, body Gaussian, taper, articulation, bone controls; S1A1; original durations at30FPS; no fixed68 or cap',
         primary='post-rendered detailed hands + payload body',secondary='pre-render payload',negative_control='post-rendered entire frame order shuffled, fixed seed20261002 per clip',

@@ -1,4 +1,11 @@
 """Frozen 30-new-gloss confirmation of S50A1 versus S1A1. Never tune here."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import inspect
 import json
@@ -18,12 +25,12 @@ def prepare():
     from step1_evaluate import hashes
     OUT.mkdir(exist_ok=True)
     assert not (OUT/'protocol.json').exists()
-    excluded={r['phrase'] for r in json.loads((HERE/'inputs.json').read_text())}
+    excluded={r['phrase'] for r in _local_json_loads((HERE/'inputs.json').read_text())}
     for name in ['validation_trial','broad_pair_trial','recognition_100']:
-        excluded.update(json.loads((HERE/name/'protocol.json').read_text())['words'])
+        excluded.update(_local_json_loads((HERE/name/'protocol.json').read_text())['words'])
     excluded.update(['motivate','continue','earn'])
-    meta=json.loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
-    with zipfile.ZipFile(HERE/'wlasl_metadata.zip') as z: released=json.loads(z.read('splits/asl2000.json'))
+    meta=_local_json_loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
+    with zipfile.ZipFile(HERE/'wlasl_metadata.zip') as z: released=_local_json_loads(z.read('splits/asl2000.json'))
     ids={(r['gloss'],i['video_id']) for r in released for i in r['instances'] if i['split']=='test'}
     pool={r['gloss']:sorted([i for i in r['instances'] if i['split']=='test' and (r['gloss'],i['video_id']) in ids],key=lambda i:i['video_id']) for r in meta if r['gloss'] not in excluded}
     pool={k:v for k,v in pool.items() if v}
@@ -51,8 +58,8 @@ def build():
 def render():
     target=OUT/'comparison';target.mkdir(exist_ok=True)
     env=dict(os.environ,AUDIT_OUTPUT=str(target),AUDIT_INPUTS=str(OUT/'inputs.json'),AUDIT_VARIANTS=json.dumps(VARIANTS),AUDIT_REVIEW_FRAMES='1')
-    subprocess.run(['C:/Users/newtu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe',str(HERE/'step1b_render.mjs')],env=env,check=True)
-    captures=json.loads((target/'rendered.json').read_text())
+    subprocess.run(['C:/Users/newtu/signing-avatar-github-newton-upload/local_runtime/node/node.exe',str(HERE/'step1b_render.mjs')],env=env,check=True)
+    captures=_local_json_loads((target/'rendered.json').read_text())
     baseline=[dict(phrase=r['phrase'],samples=r['samples']) for r in captures if r['variant']=='S1A1']
     assert len(baseline)==30
     (OUT/'rendered.json').write_text(json.dumps(baseline))
@@ -62,7 +69,7 @@ def evaluate():
     import anchored_scale_trial as comparison
     import numpy as np
     from step1_evaluate import hashes
-    protocol=json.loads((OUT/'protocol.json').read_text())
+    protocol=_local_json_loads((OUT/'protocol.json').read_text())
     assert hashes()==protocol['production_hashes']
     for name,digest in protocol['script_hashes'].items():assert hashlib.sha256((HERE/name).read_bytes()).hexdigest()==digest
     geo.DATA=OUT;geo.OUT=OUT/'baseline_geometry';geo.main()
@@ -73,7 +80,7 @@ def evaluate():
     source=source.replace("HERE/'geometry_100/results.json'","HELDOUT/'baseline_geometry/results.json'").replace('len(lookup)==300','len(lookup)==60').replace('100 คลิปชุดพัฒนาเดิม','30 คลิปคำใหม่').replace('300 sequences','60 sequences')
     ns=dict(vars(comparison),DATA=OUT,OUT=target,HELDOUT=OUT,VARIANTS=VARIANTS)
     exec(compile(source,'heldout_comparison_same_metrics','exec'),ns);ns['evaluate']()
-    result=json.loads((target/'results.json').read_text())
+    result=_local_json_loads((target/'results.json').read_text())
     differences=np.array([r['metrics']['S50A1']['distance_mean']-r['metrics']['S1A1']['distance_mean'] for r in result['perword']])
     assert len(differences)==30 and np.isfinite(differences).all()
     ci=np.quantile(np.random.default_rng(20261002).choice(differences,size=(10000,30)).mean(axis=1)*100,[.025,.975])

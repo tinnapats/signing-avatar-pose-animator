@@ -1,4 +1,11 @@
 """Frozen scale-only experiment; original wrist anchoring remains at 100%."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import json
 import os
@@ -22,14 +29,14 @@ def render():
         production_hashes=hashes(),inputs_sha256=hashlib.sha256((DATA/'inputs.json').read_bytes()).hexdigest())
     (OUT/'protocol.json').write_text(json.dumps(protocol,indent=2))
     env=dict(os.environ,AUDIT_OUTPUT=str(OUT),AUDIT_INPUTS=str(DATA/'inputs.json'),AUDIT_VARIANTS=json.dumps(VARIANTS),AUDIT_REVIEW_FRAMES='1')
-    subprocess.run(['C:/Users/newtu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe',str(HERE/'step1b_render.mjs')],env=env,check=True)
+    subprocess.run(['C:/Users/newtu/signing-avatar-github-newton-upload/local_runtime/node/node.exe',str(HERE/'step1b_render.mjs')],env=env,check=True)
 
 def evaluate():
-    protocol=json.loads((OUT/'protocol.json').read_text()); assert hashes()==protocol['production_hashes']
-    cases=json.loads((DATA/'inputs.json').read_text())
-    fits={r['word']:r['global_fit'] for r in json.loads((HERE/'geometry_100/results.json').read_text())['rows']}
-    baseline={r['phrase']:r['samples'] for r in json.loads((DATA/'rendered.json').read_text())}
-    lookup={(r['variant'],r['phrase']):r['samples'] for r in json.loads((OUT/'rendered.json').read_text())}
+    protocol=_local_json_loads((OUT/'protocol.json').read_text()); assert hashes()==protocol['production_hashes']
+    cases=_local_json_loads((DATA/'inputs.json').read_text())
+    fits={r['word']:r['global_fit'] for r in _local_json_loads((HERE/'geometry_100/results.json').read_text())['rows']}
+    baseline={r['phrase']:r['samples'] for r in _local_json_loads((DATA/'rendered.json').read_text())}
+    lookup={(r['variant'],r['phrase']):r['samples'] for r in _local_json_loads((OUT/'rendered.json').read_text())}
     assert len(lookup)==300
     pooled={v['id']:[] for v in VARIANTS}; gaps={k:[] for k in pooled}; perword=[]
     for case in cases:
@@ -61,7 +68,7 @@ def evaluate():
         perword.append(dict(word=word,metrics={k:summarize(v) for k,v in local.items()}))
     summaries={k:dict(**summarize(v),wrist_gap_mean=float(np.mean(gaps[k])),wrist_gap_max=float(np.max(gaps[k]))) for k,v in pooled.items()}
     for s in summaries.values():assert s['wrist_gap_max']<1e-8
-    oldsum=json.loads((HERE/'geometry_100/results.json').read_text())['pooled']['source_to_rendered']
+    oldsum=_local_json_loads((HERE/'geometry_100/results.json').read_text())['pooled']['source_to_rendered']
     for key in ['position_pck5_pct','distance_mean','bone_mean','angle_mean']:assert abs(summaries['S1A1'][key]-oldsum[key])<1e-8
     assert hashes()==protocol['production_hashes']
     (OUT/'results.json').write_text(json.dumps(dict(summaries=summaries,perword=perword,baseline_verified=True,production_unchanged=True),indent=2,allow_nan=False))

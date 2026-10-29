@@ -1,4 +1,11 @@
 """Frozen randomized new-word safety gate for PAIR; no production changes."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import json
 import random
@@ -12,10 +19,10 @@ OUT=HERE/'broad_pair_trial'
 def prepare():
     OUT.mkdir(exist_ok=True)
     assert not (OUT/'protocol.json').exists(),'Never replace the frozen sample'
-    excluded={c['phrase'] for c in json.loads((HERE/'inputs.json').read_text())}
-    excluded.update(json.loads((HERE/'validation_trial/protocol.json').read_text())['words'])
+    excluded={c['phrase'] for c in _local_json_loads((HERE/'inputs.json').read_text())}
+    excluded.update(_local_json_loads((HERE/'validation_trial/protocol.json').read_text())['words'])
     excluded.update(pilot.WORDS)
-    metadata=json.loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
+    metadata=_local_json_loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
     available=sorted(r['gloss'] for r in metadata if r['gloss'] not in excluded and any(i['split']=='test' for i in r['instances']))
     words=random.Random(20260928).sample(available,24)
     protocol=dict(words=words,excluded=sorted(excluded),seed=20260928,count=24,candidate='PAIR: no scale; shared mean wrist translation when both visible, per-side anchor fallback otherwise',variants=[dict(id='S1A1',scale=1,anchor=1),dict(id='PAIR',scale=0,anchor=1,pair=True)],selection='Random unseen glosses; first available test video by ascending ID; never select on scores',primary='Equal-clip mean absolute nearest inter-hand joint distance error vs newly extracted source, normalized by shoulder width',gate='Candidate must improve mean pair error AND mean wrist gap <= 0.02 shoulder width. Engineering screen, not an anatomical or user-validated threshold.',limits='Sample is not stratified by linguistic gesture type; WLASL test does not prove checkpoint training independence.',renderer_sha256=hashlib.sha256((HERE/'step1b_render.mjs').read_bytes()).hexdigest())
@@ -23,7 +30,7 @@ def prepare():
     print(json.dumps(protocol),flush=True)
 
 def delegate(stage):
-    protocol=json.loads((OUT/'protocol.json').read_text())
+    protocol=_local_json_loads((OUT/'protocol.json').read_text())
     pilot.OUT=OUT;pilot.WORDS=protocol['words']
     getattr(pilot,stage)()
 
@@ -31,7 +38,7 @@ def build():
     from run_audit import pipeline,csv_array
     from step1_evaluate import hashes
     before=hashes();cases=[]
-    for item in json.loads((OUT/'manifest.json').read_text()):
+    for item in _local_json_loads((OUT/'manifest.json').read_text()):
         word=item['word'];path=OUT/'csv'/(word+'.csv')
         payload=pipeline.build_payload(OUT/'csv',[word+'.csv'],'',30,513,513,0,0,2,1.2,2)
         source=csv_array(pipeline.concat_clips([path],513,513,0,target_fps=30))
@@ -46,10 +53,10 @@ def evaluate():
     import numpy as np
     from run_audit import frame_array
     from step1_evaluate import hashes
-    protocol=json.loads((OUT/'protocol.json').read_text())
+    protocol=_local_json_loads((OUT/'protocol.json').read_text())
     assert hashlib.sha256((HERE/'step1b_render.mjs').read_bytes()).hexdigest()==protocol['renderer_sha256']
-    cases=json.loads((OUT/'inputs.json').read_text())
-    captures={(r['variant'],r['phrase']):r['samples'] for r in json.loads((OUT/'rendered.json').read_text())}
+    cases=_local_json_loads((OUT/'inputs.json').read_text())
+    captures={(r['variant'],r['phrase']):r['samples'] for r in _local_json_loads((OUT/'rendered.json').read_text())}
     assert len(captures)==48 and {c['phrase'] for c in cases}==set(protocol['words'])
     def near(a):return float(np.linalg.norm(a[33:54,None,:]-a[None,54:75,:],axis=2).min()/np.linalg.norm(a[11]-a[12]))
     rows=[]
@@ -85,7 +92,7 @@ def evaluate():
     summaries={v:{key:float(np.mean([r[key] for r in rows if r['variant']==v and r[key] is not None])) for key in ['pair_error','wrist_gap','wrist_gap_p95','wrist_step_p95']} for v in ['S1A1','PAIR']}
     passed=summaries['PAIR']['pair_error']<summaries['S1A1']['pair_error'] and summaries['PAIR']['wrist_gap']<=.02
     summary=dict(eligible_pair_clips=len(eligible),total_clips=len(cases),improved=sum(v < -1e-6 for v in diff.values()),worsened=sum(v>1e-6 for v in diff.values()),tied=sum(abs(v)<=1e-6 for v in diff.values()),worst_pair_change=sorted(diff.items(),key=lambda kv:kv[1],reverse=True)[:3],summaries=summaries,engineering_gate_passed=passed,production_unchanged=True)
-    assert hashes()==json.loads((OUT/'production_before.json').read_text())
+    assert hashes()==_local_json_loads((OUT/'production_before.json').read_text())
     (OUT/'results.json').write_text(json.dumps(dict(summary=summary,per_clip=rows),indent=2),encoding='utf-8')
     lines=['# ทดสอบ PAIR บน 24 คำใหม่ที่สุ่มก่อนวัดผล','', 'ล็อกกฎและ hash renderer ก่อนดาวน์โหลด/สกัดจุด ไม่ปรับตามผลแต่ละคำ ไม่ใช้ F1 เป็นผู้ตัดสินความถูกต้องทางภาษามือ','',f'ประเมินระยะระหว่างมือได้ {len(eligible)}/24 คลิป; คลิปอื่นไม่ถูกนับว่าไม่มีข้อผิดพลาด',f"ดีขึ้น {summary['improved']} / แย่ลง {summary['worsened']} / เท่าเดิม {summary['tied']} คลิป (เฉพาะ metric ระยะระหว่างมือ)",'','| วิธี | Error ระยะระหว่างมือ (% ไหล่) | Gap ข้อมือเฉลี่ย (% ไหล่) | ค่าเฉลี่ย P95 gap ต่อคลิป (% ไหล่) |','|---|---:|---:|---:|']
     for v,s in summaries.items():lines.append(f"| {v} | {100*s['pair_error']:.2f} | {100*s['wrist_gap']:.2f} | {100*s['wrist_gap_p95']:.2f} |")

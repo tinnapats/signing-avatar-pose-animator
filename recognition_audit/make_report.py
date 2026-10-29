@@ -1,11 +1,18 @@
 """Validate saved predictions and generate a transparent pilot report."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import json
 from collections import Counter
 from pathlib import Path
 
 HERE=Path(__file__).resolve().parent
-result=json.loads((HERE/'results.json').read_text())
+result=_local_json_loads((HERE/'results.json').read_text())
 rows=result['predictions']
 labels=result['labels_evaluated']
 assert len(labels)==len(set(labels))==30

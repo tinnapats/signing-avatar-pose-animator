@@ -1,4 +1,11 @@
 """Isolated, frozen two-condition arm/hand experiment; no production edits."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json, sys, copy, math
 import numpy as np
 import novel_words30 as prev
@@ -16,8 +23,8 @@ def prepare():
     assert not (OUT/'renderer/rendered.json').exists()
     OUT.mkdir(exist_ok=True)
     (OUT/'cases').mkdir(exist_ok=True)
-    cases=[json.loads(p.read_text()) for p in sorted((SRC/'cases').glob('*.json'))]
-    caps={c['phrase']:c for c in json.loads((SRC/'renderer/rendered.json').read_text())}
+    cases=[_local_json_loads(p.read_text()) for p in sorted((SRC/'cases').glob('*.json'))]
+    caps={c['phrase']:c for c in _local_json_loads((SRC/'renderer/rendered.json').read_text())}
     protocol=dict(labels=[c['label'] for c in cases],production=base.production(),
       source_hashes={str(p.relative_to(HERE)):base.sha(p) for p in [SRC/'inputs.json',SRC/'renderer/rendered.json',HERE/'wlasl_stgcn.zip']},
       methods=['HAND_TO_BODY','ARM_TO_HAND'],fps=30,
@@ -72,13 +79,13 @@ def prepare():
     print('Prepared',len(inputs),'cases',flush=True)
 
 def score():
-    p=json.loads((OUT/'protocol.json').read_text());assert base.production()==p['production']
+    p=_local_json_loads((OUT/'protocol.json').read_text());assert base.production()==p['production']
     for name,h in p['source_hashes'].items():assert base.sha(HERE/name)==h
-    cases={c['phrase']:c for c in json.loads((OUT/'case_index.json').read_text())}
-    caps=json.loads((OUT/'renderer/rendered.json').read_text());assert len(caps)==400
+    cases={c['phrase']:c for c in _local_json_loads((OUT/'case_index.json').read_text())}
+    caps=_local_json_loads((OUT/'renderer/rendered.json').read_text());assert len(caps)==400
     _,predict=prev.load_predictor();rows=[];geo=[];max_body_error=0
     for n,cap in enumerate(caps):
-        c=json.loads(__import__('pathlib').Path(cases[cap['phrase']]['file']).read_text());orig=json.loads((SRC/'cases'/f"{p['labels'].index(c['label']):03d}.json").read_text());a=arrays(c,cap);gap=[];length_error=[];tracks={side:[] for side in ['left','right']};widths=[]
+        c=_local_json_loads(__import__('pathlib').Path(cases[cap['phrase']]['file']).read_text());orig=_local_json_loads((SRC/'cases'/f"{p['labels'].index(c['label']):03d}.json").read_text());a=arrays(c,cap);gap=[];length_error=[];tracks={side:[] for side in ['left','right']};widths=[]
         assert c['frameIndices']==orig['frameIndices']
         assert len(c['payload']['frames'])==len(orig['payload']['frames'])
         assert all(f.get('hands')==o.get('hands') for f,o in zip(c['payload']['frames'],orig['payload']['frames']))
@@ -106,7 +113,7 @@ def score():
     summary={m:{key:float(np.mean([r[key] for r in geo if r['method']==m and r[key] is not None])) for key in ['wrist_gap','bone_relative_error','elbow_second_difference']} for m in p['methods']}
     by={(r['label'],r['variant']):r['prediction']==r['label'] for r in rows};g=sum(not by[l,'HAND_TO_BODY'] and by[l,'ARM_TO_HAND'] for l in p['labels']);loss=sum(by[l,'HAND_TO_BODY'] and not by[l,'ARM_TO_HAND'] for l in p['labels']);n=g+loss
     prob=min(1.,2*sum(math.comb(n,k) for k in range(min(g,loss)+1))/2**n) if n else 1.
-    old={r['label']:r['prediction'] for r in json.loads((SRC/'results.json').read_text())['predictions'] if r['model']=='ST-GCN' and r['stage']=='post'}
+    old={r['label']:r['prediction'] for r in _local_json_loads((SRC/'results.json').read_text())['predictions'] if r['model']=='ST-GCN' and r['stage']=='post'}
     baseline_matches=sum(r['prediction']==old[r['label']] for r in rows if r['variant']=='HAND_TO_BODY')
     result=dict(metrics=metrics,geometry=summary,gained=g,lost=loss,paired_exact_p=prob,max_renderer_payload_arm_error=max_body_error,baseline_prediction_matches_previous=baseline_matches,predictions=rows,per_word_geometry=geo,
       capture_sha256=base.sha(OUT/'renderer/rendered.json'),script_hashes={name:base.sha(HERE/name) for name in ['arm_hand_compare.py','arm_hand_render.mjs']})

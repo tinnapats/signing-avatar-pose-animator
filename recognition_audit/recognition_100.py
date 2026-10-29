@@ -1,4 +1,11 @@
 """Original seven-condition ST-GCN evaluation on a frozen new 100-word sample."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import hashlib
 import json
 import random
@@ -17,12 +24,12 @@ def prepare():
     from step1_evaluate import hashes
     OUT.mkdir(exist_ok=True)
     assert not (OUT/'protocol.json').exists(),'Frozen protocol already exists'
-    excluded={c['phrase'] for c in json.loads((HERE/'inputs.json').read_text())}
+    excluded={c['phrase'] for c in _local_json_loads((HERE/'inputs.json').read_text())}
     for folder in ['validation_trial','broad_pair_trial']:
-        excluded.update(json.loads((HERE/folder/'protocol.json').read_text())['words'])
+        excluded.update(_local_json_loads((HERE/folder/'protocol.json').read_text())['words'])
     excluded.update(['motivate','continue','earn'])
-    metadata=json.loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
-    with zipfile.ZipFile(HERE/'wlasl_metadata.zip') as z:released=json.loads(z.read('splits/asl2000.json'))
+    metadata=_local_json_loads((HERE/'kaggle_reference/WLASL_v0.3.json').read_bytes())
+    with zipfile.ZipFile(HERE/'wlasl_metadata.zip') as z:released=_local_json_loads(z.read('splits/asl2000.json'))
     released_test={(r['gloss'],i['video_id']) for r in released for i in r['instances'] if i['split']=='test'}
     pool={r['gloss']:sorted([i for i in r['instances'] if i['split']=='test' and (r['gloss'],i['video_id']) in released_test],key=lambda i:i['video_id']) for r in metadata if r['gloss'] not in excluded}
     pool={k:v for k,v in pool.items() if v}
@@ -32,9 +39,9 @@ def prepare():
     print('Frozen 100 words; released test IDs intersected.',flush=True)
 
 def download():
-    protocol=json.loads((OUT/'protocol.json').read_text())
+    protocol=_local_json_loads((OUT/'protocol.json').read_text())
     (OUT/'videos').mkdir(exist_ok=True)
-    manifest=json.loads((OUT/'manifest.json').read_text()) if (OUT/'manifest.json').exists() else []
+    manifest=_local_json_loads((OUT/'manifest.json').read_text()) if (OUT/'manifest.json').exists() else []
     done={i['word'] for i in manifest};failures=[]
     for word in protocol['words']:
         if word in done:continue
@@ -61,9 +68,9 @@ def extract():
 def build():
     from run_audit import pipeline,csv_array
     from step1_evaluate import hashes
-    protocol=json.loads((OUT/'protocol.json').read_text());assert hashes()==protocol['production_hashes']
+    protocol=_local_json_loads((OUT/'protocol.json').read_text());assert hashes()==protocol['production_hashes']
     cases=[]
-    for item in json.loads((OUT/'manifest.json').read_text()):
+    for item in _local_json_loads((OUT/'manifest.json').read_text()):
         word=item['word'];path=OUT/'csv'/(word+'.csv')
         native=csv_array(pipeline.read_clip_csv(path))
         payload=pipeline.build_payload(OUT/'csv',[word+'.csv'],'',30,513,513,0,0,2,1.2,2)
@@ -78,10 +85,10 @@ def build():
 def evaluate():
     import run_audit
     from step1_evaluate import hashes
-    protocol=json.loads((OUT/'protocol.json').read_text())
+    protocol=_local_json_loads((OUT/'protocol.json').read_text())
     assert hashes()==protocol['production_hashes']
     for f,h in protocol['script_hashes'].items():assert hashlib.sha256((HERE/f).read_bytes()).hexdigest()==h
-    captures=json.loads((OUT/'rendered.json').read_text())
+    captures=_local_json_loads((OUT/'rendered.json').read_text())
     assert len(captures)==100 and {r['phrase'] for r in captures}==set(protocol['words'])
     run_audit.run(OUT)
     assert hashes()==protocol['production_hashes']
@@ -89,7 +96,7 @@ def evaluate():
 
 def report():
     from collections import Counter
-    result=json.loads((OUT/'results.json').read_text());rows=result['predictions']
+    result=_local_json_loads((OUT/'results.json').read_text());rows=result['predictions']
     assert len(rows)==700
     grouped={v:[r for r in rows if r['variant']==v] for v in {r['variant'] for r in rows}}
     assert all(len(r)==100 for r in grouped.values()) and len(grouped)==7

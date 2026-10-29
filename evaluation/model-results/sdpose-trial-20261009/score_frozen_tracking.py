@@ -1,3 +1,10 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,importlib.util,time,collections
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -5,7 +12,7 @@ import numpy as np
 import torch
 ROOT=Path(__file__).resolve().parent;V=ROOT.parent;O=ROOT/'frozen_tracking_plan_20261011'
 A=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit');B=A/'pixels30_20261007';R=B/'rtm_trial_20261008'
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 def save(p,x):p.write_text(json.dumps(x,indent=2),encoding='utf-8')
 assert read(O/'protocol.json')['status']=='extracted' and not (O/'results.json').exists()

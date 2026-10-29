@@ -1,4 +1,11 @@
 """Review actual Canvas captures; native SVG has no invented 21-point skeleton."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import hashlib
 import subprocess
@@ -6,10 +13,10 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 HERE=Path(__file__).resolve().parent;OUT=HERE/'transition_chain_20261002'
-cases=json.loads((OUT/'inputs.json').read_text());caps=json.loads((OUT/'rendered.json').read_text())
+cases=_local_json_loads((OUT/'inputs.json').read_text());caps=_local_json_loads((OUT/'rendered.json').read_text())
 assert len(caps)==24
 lookup={(c['phrase'],c['variant']):c for c in caps}
-previous={c['phrase']:c for c in json.loads((HERE/'combined_winners200/renderer/rendered.json').read_text()) if c['variant']=='S1A1'}
+previous={c['phrase']:c for c in _local_json_loads((HERE/'combined_winners200/renderer/rendered.json').read_text()) if c['variant']=='S1A1'}
 rows=[];examples=[]
 for case in cases:
     name=case['phrase'];control=lookup[name,'control']['samples'];chain=lookup[name,'chain']['samples']
@@ -46,7 +53,7 @@ for case in cases:
         indices=sorted({j for i in switched for j in [i-1,i]})
         index=min(indices,key=lambda i:min(chain[i]['fallback'][s]['factor'] for s in ['left','right']))
         examples.append((min(chain[index]['fallback'][s]['factor'] for s in ['left','right']),case,index))
-protocol=json.loads((HERE/'bridge_transition_20261002/protocol.json').read_text())
+protocol=_local_json_loads((HERE/'bridge_transition_20261002/protocol.json').read_text())
 for p,h in protocol['production'].items():assert hashlib.sha256((HERE.parent/p).read_bytes()).hexdigest()==h
 result=dict(rows=rows,totals={k:sum(r[k] for r in rows) for k in ['native_hand_frames','no_reference_hand_frames','changed_native_hand_frames','switch_video_frames','switch_hand_events']},
     checks=dict(production_unchanged=True,detailed_endpoints_exact_to_prior=True,native_presence_unchanged=True,

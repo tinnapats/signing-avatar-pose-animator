@@ -1,4 +1,11 @@
 """Compare combinations and record native fallback without inventing landmarks."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import math
 import os
@@ -10,11 +17,11 @@ import combine_winners200 as study
 base=study.base;OUT=Path(os.environ.get('STUDY_OUTPUT',str(study.OUT)))
 
 def main():
-    result=json.loads((OUT/'results.json').read_text())
-    cases={r['phrase']:r for r in json.loads((OUT/'review_inputs.json').read_text())}
-    captured=json.loads((OUT/'renderer/rendered.json').read_text());assert len(captured)==len(cases)*int(os.environ.get('STUDY_SCALE_COUNT','2'))
-    originals={c['phrase']:c for c in json.loads((base.SOURCE/'inputs.json').read_text()) if c['phrase'] in study.parts.REVIEW}
-    archived={c['phrase']:c for c in json.loads((base.SOURCE/'rendered.json').read_text())}
+    result=_local_json_loads((OUT/'results.json').read_text())
+    cases={r['phrase']:r for r in _local_json_loads((OUT/'review_inputs.json').read_text())}
+    captured=_local_json_loads((OUT/'renderer/rendered.json').read_text());assert len(captured)==len(cases)*int(os.environ.get('STUDY_SCALE_COUNT','2'))
+    originals={c['phrase']:c for c in _local_json_loads((base.SOURCE/'inputs.json').read_text()) if c['phrase'] in study.parts.REVIEW}
+    archived={c['phrase']:c for c in _local_json_loads((base.SOURCE/'rendered.json').read_text())}
     model,norm,vocab=base.audit.load_model();rows=[]
     for cap in captured:
         c=cases[cap['phrase']];label=c['label'];variant=c['variant']+'__'+cap['variant'];samples=cap['samples'];frames=c['payload']['frames'][::2]
@@ -85,8 +92,8 @@ def main():
         m['mean_word_common_second_difference']=float(np.mean(vals)) if vals else None
         summaries[v]=m
     # Four predeclared incremental comparisons, not all-pairs searching.
-    pairs={};lookup={(r['label'],r['variant']):r for r in result['predictions']};labels=json.loads((OUT/'protocol.json').read_text())['labels']
-    comparisons=json.loads(os.environ['STUDY_COMPARISONS']) if 'STUDY_COMPARISONS' in os.environ else [('no_repair','no_repair_no_smoothing'),('no_hold','no_hold_no_smoothing'),('no_hand_smoothing','no_repair_no_smoothing'),('no_hand_smoothing','no_hold_no_smoothing')]
+    pairs={};lookup={(r['label'],r['variant']):r for r in result['predictions']};labels=_local_json_loads((OUT/'protocol.json').read_text())['labels']
+    comparisons=_local_json_loads(os.environ['STUDY_COMPARISONS']) if 'STUDY_COMPARISONS' in os.environ else [('no_repair','no_repair_no_smoothing'),('no_hold','no_hold_no_smoothing'),('no_hand_smoothing','no_repair_no_smoothing'),('no_hand_smoothing','no_hold_no_smoothing')]
     for a,b in comparisons:
         gained=[l for l in labels if lookup[l,a]['prediction']!=l and lookup[l,b]['prediction']==l]
         lost=[l for l in labels if lookup[l,a]['prediction']==l and lookup[l,b]['prediction']!=l]
@@ -96,7 +103,7 @@ def main():
     for v in result['summaries']:
         rr=[r for r in result['predictions'] if r['variant']==v]
         geom[v]=dict(bone_span=float(np.mean([r['geometry']['mean_bone_span'] for r in rr if r['geometry']['mean_bone_span'] is not None])),bend_over115=float(np.mean([r['geometry']['bend_over115_fraction'] for r in rr if r['geometry']['bend_over115_fraction'] is not None])))
-    assert base.production()==json.loads((OUT/'protocol.json').read_text())['production']
+    assert base.production()==_local_json_loads((OUT/'protocol.json').read_text())['production']
     (OUT/'renderer_review.json').write_text(json.dumps(dict(summaries=summaries,predictions=rows,common_roughness=roughness,baseline_capture_exact=True,production_unchanged=True,
         caveat='Diagnostic12, actual detailed endpoints plus payload body; native paths measured as bounds/state, NOT assigned fake 21 points or recognized.'),indent=2),encoding='utf-8')
     (OUT/'analysis.json').write_text(json.dumps(dict(pairwise=pairs,geometry=geom),indent=2),encoding='utf-8')

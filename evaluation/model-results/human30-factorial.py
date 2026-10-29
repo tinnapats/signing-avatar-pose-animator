@@ -1,14 +1,21 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,zipfile,random,time,math
 from pathlib import Path
 sys.dont_write_bytecode=True
 import numpy as np
 HERE=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit');OUT=HERE/'human30_preprocess_20261008';sys.path.insert(0,str(HERE))
-read=lambda p:json.loads(p.read_text(encoding='utf8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf8'))
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def save(p,v):p.write_text(json.dumps(v,ensure_ascii=False,indent=2),encoding='utf8')
 def freeze():
  OUT.mkdir(exist_ok=True);assert not (OUT/'protocol.json').exists()
- metadata=json.loads(zipfile.ZipFile(HERE/'wlasl_metadata.zip').read('splits/asl2000.json'));ids={str(i['video_id']):(r['gloss'],i['split']) for r in metadata for i in r['instances']};pool={};sources={}
+ metadata=_local_json_loads(zipfile.ZipFile(HERE/'wlasl_metadata.zip').read('splits/asl2000.json'));ids={str(i['video_id']):(r['gloss'],i['split']) for r in metadata for i in r['instances']};pool={};sources={}
  for name in ['head_pilot_20261005','heldout_scale_trial','broad_pair_trial','paired_video']:
   f=HERE/name/'manifest.json';sources[str(f)]=sha(f)
   for r in read(f):

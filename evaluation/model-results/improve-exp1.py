@@ -1,3 +1,10 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,time,importlib.util
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -6,7 +13,7 @@ import torch
 D=Path(__file__).resolve().parent;O=D/'improve-exp12-20261013';A=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit');sys.path.insert(0,str(A))
 import run_audit as audit
 import compare_slgcn_best as pilot
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 def main():
  s=importlib.util.spec_from_file_location('metrics_only',D/'rtm-eval.py');ev=importlib.util.module_from_spec(s);s.loader.exec_module(ev)
  st,norm,vocab=audit.load_model();sl,cfg=pilot.load_slgcn();old=read(A/'slgcn200_20261002/results.json');old={(r['label'],r['model']):r for r in old['predictions'] if r['stage']=='pre'};pred={v:[] for v in ['ST-GCN','SL-GCN','ST50_SL50','ST75_SL25']};(O/'exp1-inference').mkdir(exist_ok=True)

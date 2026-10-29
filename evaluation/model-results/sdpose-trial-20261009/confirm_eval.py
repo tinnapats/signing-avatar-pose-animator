@@ -1,3 +1,10 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,importlib.util
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -7,15 +14,15 @@ from track_hands import assign,tests,SETTINGS
 ROOT=Path(__file__).resolve().parent
 P=ROOT/'confirmation3'; O=P/'stgcn'; O.mkdir(exist_ok=True)
 assert not (O/'protocol.json').exists()
-assert json.loads((P/'protocol.json').read_text())['status']=='three_clip_inference_completed'
+assert _local_json_loads((P/'protocol.json').read_text())['status']=='three_clip_inference_completed'
 A=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit')
 B=A/'pixels30_20261007'; R=B/'rtm_trial_20261008'
 sys.path.insert(0,str(A))
 import run_audit as audit
 spec=importlib.util.spec_from_file_location('rtm_eval',ROOT.parent/'rtm-eval.py')
 ev=importlib.util.module_from_spec(spec);spec.loader.exec_module(ev)
-rows=json.loads((P/'results.json').read_text())
-manifest=json.loads((B/'capture_manifest.json').read_text())[3:6]
+rows=_local_json_loads((P/'results.json').read_text())
+manifest=_local_json_loads((B/'capture_manifest.json').read_text())[3:6]
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 protocol={'status':'registered','settings':SETTINGS,'selection':'manifest entries 3:6, no score selection; new to this SDPose experiment only',
  'clips':[{ 'id':c['id'],'label':c['label'],'frames':len(c['frames'])} for c in manifest],
@@ -24,7 +31,7 @@ protocol={'status':'registered','settings':SETTINGS,'selection':'manifest entrie
  'production_edited':False}
 (O/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
 tests(); model,norm,vocab=audit.load_model()
-old=json.loads((R/'results.json').read_text())
+old=_local_json_loads((R/'results.json').read_text())
 pred={}; decisions=[]; inputs={}; logits={}
 for clip in manifest:
  cid=clip['id']; label=clip['label']; rr=[r for r in rows if r['id']==cid]

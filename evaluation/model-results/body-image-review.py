@@ -1,8 +1,15 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib
 from pathlib import Path
 import cv2,numpy as np
 B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');R=B/'rtm_trial_20261008';O=Path(__file__).parent/'body-image-review-20261009';O.mkdir(exist_ok=True)
-read=lambda p:json.loads(p.read_text(encoding='utf8'));sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();manifest=read(B/'capture_manifest.json');refs={c['id']:c for c in read(B/'coordinate_reference.json')}
+read=lambda p:_local_json_loads(p.read_text(encoding='utf8'));sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();manifest=read(B/'capture_manifest.json');refs={c['id']:c for c in read(B/'coordinate_reference.json')}
 chosen=[0,6,12,17,23,29];errors={'RTMW':[],'MediaPipe':[]};rows=[];worst=[]
 for c in manifest:
  z=np.load(R/(c['id']+'.npz'));assert sha(R/(c['id']+'.npz'))==read(R/(c['id']+'.json'))['sha256'];raw=read(B/'detected'/(c['id']+'.json'))['rows'];samples=refs[c['id']]['samples']

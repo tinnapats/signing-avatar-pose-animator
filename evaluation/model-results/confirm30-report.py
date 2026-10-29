@@ -1,8 +1,15 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,math,hashlib
 from pathlib import Path
 import numpy as np
 import cv2
-O=Path(__file__).parent/'confirm30-crop-20261009';read=lambda p:json.loads(p.read_text(encoding='utf8'));r=read(O/'results.json');manifest=read(O/'capture_manifest.json');ref={c['id']:c for c in read(O/'coordinate_reference.json')};a=r['predictions']['baseline'];b=r['predictions']['wide_120']
+O=Path(__file__).parent/'confirm30-crop-20261009';read=lambda p:_local_json_loads(p.read_text(encoding='utf8'));r=read(O/'results.json');manifest=read(O/'capture_manifest.json');ref={c['id']:c for c in read(O/'coordinate_reference.json')};a=r['predictions']['baseline'];b=r['predictions']['wide_120']
 g=[x['label'] for x,y in zip(b,a) if x['prediction']==x['label'] and y['prediction']!=y['label']];l=[x['label'] for x,y in zip(b,a) if x['prediction']!=x['label'] and y['prediction']==y['label']];n=len(g)+len(l);p=min(1,2*sum(math.comb(n,j) for j in range(min(len(g),len(l))+1))/2**n) if n else 1
 def wilson(k,n):
  z=1.95996398454;mid=(k/n+z*z/(2*n))/(1+z*z/n);half=z*math.sqrt((k/n)*(1-k/n)/n+z*z/(4*n*n))/(1+z*z/n);return [100*(mid-half),100*(mid+half)]

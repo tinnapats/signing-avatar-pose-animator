@@ -1,11 +1,18 @@
 """Pixels-only 30-word pilot, detection and scoring in separate environments."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,time,collections
 from pathlib import Path
 sys.dont_write_bytecode=True
 HERE=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit')
 OUT=HERE/'pixels30_20261007'
 sys.path.insert(0,str(HERE))
-def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def read(p):return _local_json_loads(p.read_text(encoding='utf-8'))
 def save(p,x):p.write_text(json.dumps(x,ensure_ascii=False),encoding='utf-8')
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def longest(values):

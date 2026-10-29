@@ -1,4 +1,11 @@
 """Fixed candidate versus production on 60 disjoint words. Audit artifacts only."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import random
 import sys
@@ -15,7 +22,7 @@ OUT = HERE/'validation_trial'
 def prepare():
     OUT.mkdir(exist_ok=True)
     assert not (OUT/'protocol.json').exists(), 'Do not overwrite a frozen trial'
-    excluded = [c['phrase'] for c in json.loads((HERE/'inputs.json').read_text())]
+    excluded = [c['phrase'] for c in _local_json_loads((HERE/'inputs.json').read_text())]
     clips = pipeline.discover_clips(ROOT/'SLclean.sqlite3')
     available = sorted({Path(n).stem for n in clips}-set(excluded))
     words = random.Random(20260927).sample(available, 60)
@@ -44,7 +51,7 @@ def prepare():
         cases.append(dict(phrase=name,payload=payload,source30=source.tolist(),frameIndices=indices))
         fits[name]=affine
         print('prepared',name,flush=True)
-    assert base.hashes()==json.loads((OUT/'production_before.json').read_text())
+    assert base.hashes()==_local_json_loads((OUT/'production_before.json').read_text())
     (OUT/'inputs.json').write_text(json.dumps(cases),encoding='utf-8')
     (OUT/'reference_fit.json').write_text(json.dumps(fits),encoding='utf-8')
 
@@ -61,8 +68,8 @@ def evaluate():
     scope['OUT']=OUT
     scope['NAMES']={'S1A1':'ระบบเดิม','S50A75':'ขนาด 50% / ยึดข้อมือ 75%'}
     scope['evaluate']()
-    result=json.loads((OUT/'results.json').read_text())
-    protocol=json.loads((OUT/'protocol.json').read_text())
+    result=_local_json_loads((OUT/'results.json').read_text())
+    protocol=_local_json_loads((OUT/'protocol.json').read_text())
     rows=result['predictions']
     by={(r['variant'],r['label']):r['prediction']==r['label'] for r in rows}
     words=protocol['words']

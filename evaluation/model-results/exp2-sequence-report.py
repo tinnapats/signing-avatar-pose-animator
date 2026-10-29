@@ -1,7 +1,14 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 D=Path(__file__).resolve().parent;O=D/'exp2-sequence-audit-20261014'
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 r=read(O/'coverage.json');t=r['totals'];tests=read(O/'tests.json');den=2*t['frames']
 lines=['# Experiment2 — ตรวจทั้งลำดับและขั้นเตรียมข้อมูล','','14ตุลาคม2026: ตรวจข้อ1–2ของแผนโดยไม่แก้ระบบหลัก ไม่รันวิธีใหม่เพื่อไล่คะแนน ไม่ใช้Renderer/CSVเป็นground truth ไม่อ่านผลรู้จำเพื่อเลือกตัวอย่าง และไม่ใช้ชุดreserved30','','## ข้อค้นพบหลัก','','RTMWคืนมือที่ผ่านconfidenceเกือบทุกเฟรม แต่การมีพิกัดไม่ได้หมายความว่าจุดถูก ปัญหาที่เห็นในภาพตัวอย่างมีทั้งมือไปอยู่บนกางเกง จุดนิ้วกระจุกกลางฝ่ามือ และbody wrist/elbowไม่ตรงแขนจริง ดังนั้นการกู้เฉพาะมือที่ถูกคัดทิ้งมีขอบเขตเล็กมากและยังไม่ได้แก้พิกัดผิดที่ผ่านconfidence','','## ขอบเขตและตัวเลข','','200คลิป รวม14,084เฟรมที่30FPS = 28,168มือ-เฟรม (สองข้างต่อภาพ) หนึ่งมือ-เฟรมคือมือหนึ่งข้างในภาพหนึ่งเฟรม สัญญาณต่างๆนับซ้ำกันได้ ไม่ใช่หมวดแยกขาดและไม่ใช่เปอร์เซ็นต์ความผิดจริง','','| สัญญาณ | จำนวนมือ-เฟรม | สัดส่วนจาก28,168 |','|---|---:|---:|']
 names={'raw_missing':'มือไม่ผ่านconfidenceก่อนตัวกรองสีผิว','old_gate':'มือที่ตัวกรองเดิมคัดทิ้ง','post_gate_missing':'มือขาดข้อมูลหลังตัวกรอง','wrist_off_skin':'ข้อมือห่างสีผิวเกิน6px','majority_off_skin':'จุดมือส่วนใหญ่ห่างสีผิวเกิน6px','collapsed':'อย่างน้อย5ช่วงกระดูกสั้นกว่า0.5px','projected_length_outlier':'อย่างน้อย3ช่วงกระดูกมีความยาว2Dต่างจากmedianของช่วงนั้นเกิน3เท่า','wrist_jump':'ข้อมือกระโดดเกินครึ่งความกว้างไหล่ต่อเฟรม','wrist_body_disagreement':'ข้อมือมือกับข้อมือลำตัวห่างเกิน0.65เท่าท่อนแขน'}

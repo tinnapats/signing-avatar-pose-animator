@@ -1,4 +1,11 @@
 """Factorial renderer-only ablation. Production code is never edited."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import argparse
 import hashlib
 import json
@@ -19,7 +26,7 @@ def hashes():
 def prepare():
     OUT.mkdir(exist_ok=True)
     (OUT/'production_before.json').write_text(json.dumps(hashes()),encoding='utf-8')
-    cases=json.loads((HERE/'inputs.json').read_text()); refs={}
+    cases=_local_json_loads((HERE/'inputs.json').read_text()); refs={}
     for case in cases:
         affine={}; original=pipeline.fit_frames_to_canvas
         def capture(frames,width,height):
@@ -40,9 +47,9 @@ def prepare():
     (OUT/'reference_fit.json').write_text(json.dumps(refs),encoding='utf-8')
 
 def evaluate():
-    cases=json.loads((HERE/'inputs.json').read_text()); fits=json.loads((OUT/'reference_fit.json').read_text())
-    captures=json.loads((OUT/'rendered.json').read_text()); lookup={(r['variant'],r['phrase']):r['samples'] for r in captures}
-    previous={r['phrase']:r['samples'] for r in json.loads((HERE/'rendered.json').read_text())}
+    cases=_local_json_loads((HERE/'inputs.json').read_text()); fits=_local_json_loads((OUT/'reference_fit.json').read_text())
+    captures=_local_json_loads((OUT/'rendered.json').read_text()); lookup={(r['variant'],r['phrase']):r['samples'] for r in captures}
+    previous={r['phrase']:r['samples'] for r in _local_json_loads((HERE/'rendered.json').read_text())}
     # Both-on must reproduce the prior production-mode audit exactly.
     baseline_exact=True
     for case in cases:
@@ -109,7 +116,7 @@ def evaluate():
             shape_pck20=float(np.mean(np.array(e['shape'])<=.2)*100),coverage=float(np.mean(np.isfinite(e['position']))*100),
             wrist_gap_mean_percent=float(np.mean(e['wrist_gap'])*100),wrist_gap_p95_percent=float(np.percentile(e['wrist_gap'],95)*100),wrist_gap_within2_percent=float(np.mean(np.array(e['wrist_gap'])<=.02)*100),correct=sum(p['label']==p['prediction'] for p in ps),
             macro_precision=float(mp),macro_recall=float(mr),macro_f1=float(mf)))
-    before=json.loads((OUT/'production_before.json').read_text());after=hashes()
+    before=_local_json_loads((OUT/'production_before.json').read_text());after=hashes()
     assert before==after,'Tracked production files changed during audit'
     result=dict(summaries=summaries,predictions=predictions,per_case=per_case,production_files_unchanged=True,
         baseline_capture_exact_match=baseline_exact,baseline_capture_tolerance=BASELINE_TOLERANCE,reference='fully observed hands at source30 timestamps; same global fit as output, no per-hand fitted alignment',

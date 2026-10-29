@@ -1,4 +1,11 @@
 """Isolated 2D adaptation of production functions; frozen 2x4 experiment."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import sys,json,hashlib,importlib.util,copy,time
 from pathlib import Path
 sys.dont_write_bytecode=True
@@ -25,7 +32,7 @@ protocol={'status':'registered','clips':'All six SDPose clips, no per-word selec
  'limitations':'2D projected bone lengths legitimately vary. Pilot on developmental clips, not independent validation. Offline symmetric filters use future frames.',
  'hashes':{str(p):sha(p) for p in [Path(__file__),A.parent/'export_pose_animator_sequence.py',ROOT.parent/'rtm-eval.py',A/'wlasl_stgcn.zip']}}
 (O/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
-rows=sum([json.loads((ROOT/f/'results.json').read_text()) for f in ['tracking3','confirmation3']],[])
+rows=sum([_local_json_loads((ROOT/f/'results.json').read_text()) for f in ['tracking3','confirmation3']],[])
 def process(k,s,mode):
  out=k.copy()
  if mode=='raw':return out
@@ -78,7 +85,7 @@ for cid in sorted({r['id'] for r in rows}):
    print(label,v,res['prediction'],res['target_rank'],flush=True)
 np.savez_compressed(O/'processed.npz',**processed);np.savez_compressed(O/'inputs.npz',**inputs);np.savez_compressed(O/'logits.npz',**logits)
 # Only now read references, after every model prediction and processed sequence is fixed.
-refs={c['id']:{f['index']:f for f in c['samples']} for c in json.loads((B/'coordinate_reference.json').read_text())}
+refs={c['id']:{f['index']:f for f in c['samples']} for c in _local_json_loads((B/'coordinate_reference.json').read_text())}
 geometry={};details=[]
 for key,q in processed.items():
  cid,v=key.split('_',1);s=metadata[key]['scores'];rr=metadata[key]['rows'];source=v.split('_')[0]

@@ -1,4 +1,11 @@
 """Scientific contact sheets and videos for inspecting known regressions."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import subprocess
@@ -13,9 +20,9 @@ from PIL import Image,ImageOps,ImageDraw
 OUT=HERE/'method_review'
 
 def main():
-    data=json.loads((OUT/'diagnostics.json').read_text());(OUT/'videos').mkdir(exist_ok=True)
-    old={(r['variant'],r['phrase']):r['samples'] for r in json.loads((HERE/'heldout_scale_trial/comparison/rendered.json').read_text())}
-    fresh=json.loads((OUT/'rendered.json').read_text())
+    data=_local_json_loads((OUT/'diagnostics.json').read_text());(OUT/'videos').mkdir(exist_ok=True)
+    old={(r['variant'],r['phrase']):r['samples'] for r in _local_json_loads((HERE/'heldout_scale_trial/comparison/rendered.json').read_text())}
+    fresh=_local_json_loads((OUT/'rendered.json').read_text())
     for r in fresh:
         prior=old[r['variant'],r['phrase']];assert len(prior)==len(r['samples'])
         for a,b in zip(prior,r['samples']):

@@ -1,9 +1,16 @@
 """Exploratory spatial coverage, not joint accuracy or semantic evaluation."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,itertools
 import cv2
 from pathlib import Path
 HERE=Path(__file__).resolve().parent;OUT=HERE/'avatar_pixel_probe_20261004';SRC=HERE/'adjacent_holdout60_20261004'
-def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def read(p):return _local_json_loads(p.read_text(encoding='utf-8'))
 def iou(a,b):
     w=max(0,min(a[2],b[2])-max(a[0],b[0]));h=max(0,min(a[3],b[3])-max(a[1],b[1]));inter=w*h
     union=(a[2]-a[0])*(a[3]-a[1])+(b[2]-b[0])*(b[3]-b[1])-inter

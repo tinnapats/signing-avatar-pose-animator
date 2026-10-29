@@ -1,8 +1,15 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,math,hashlib
 from pathlib import Path
 from collections import Counter
 import numpy as np,cv2
-O=Path(__file__).parent/'optical-hand-track-20261009';B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');read=lambda p:json.loads(p.read_text(encoding='utf8'));r=read(O/'results.json');manifest=read(B/'capture_manifest.json');refs={c['id']:c for c in read(B/'coordinate_reference.json')};counts=Counter();rows=[];ms=[]
+O=Path(__file__).parent/'optical-hand-track-20261009';B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');read=lambda p:_local_json_loads(p.read_text(encoding='utf8'));r=read(O/'results.json');manifest=read(B/'capture_manifest.json');refs={c['id']:c for c in read(B/'coordinate_reference.json')};counts=Counter();rows=[];ms=[]
 for c in manifest:
  z=np.load(O/(c['id']+'.npz'));a=np.load(O/'inputs'/(c['id']+'.npz'));logs=read(O/(c['id']+'_raw.json'));ms.extend(z['ms'].tolist())
  for i,rr in enumerate(logs):

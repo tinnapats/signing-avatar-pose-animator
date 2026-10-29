@@ -1,9 +1,16 @@
 """Summarize predetermined screening and the frozen new-word pilot."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import math
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
-def read(p):return json.loads((HERE/p).read_text())
+def read(p):return _local_json_loads((HERE/p).read_text())
 def paired(rows,a,b):
     look={(r['label'],r['variant']):r for r in rows};labels=list(dict.fromkeys(r['label'] for r in rows))
     gains=[l for l in labels if look[l,a]['prediction']!=l and look[l,b]['prediction']==l]

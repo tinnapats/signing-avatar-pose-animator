@@ -1,10 +1,17 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import os,sys,json,time,hashlib,importlib.metadata
 from pathlib import Path
 sys.dont_write_bytecode=True
 import numpy as np
 A=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit');B=A/'pixels30_20261007';O=B/'rtm_trial_20261008'
 os.environ['TORCH_HOME']=str(O/'model_cache')
-read=lambda p:json.loads(p.read_text(encoding='utf8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf8'))
 def save(p,x):p.write_text(json.dumps(x,ensure_ascii=False,indent=2),encoding='utf8')
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 URL='https://download.openmmlab.com/mmpose/v1/projects/'

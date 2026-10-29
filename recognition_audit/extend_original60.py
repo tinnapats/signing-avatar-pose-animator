@@ -1,4 +1,11 @@
 """Extend the original frozen 30-word ST-GCN protocol to 60 words."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import argparse
 from collections import Counter
 import hashlib
@@ -15,10 +22,10 @@ OUT=HERE/'original_method60_20260930'
 
 def prepare():
     assert not OUT.exists(),'Refuse to overwrite previous experiment'
-    manifest=json.loads((HERE/'manifest.json').read_text())
+    manifest=_local_json_loads((HERE/'manifest.json').read_text())
     for name in ['inputs.json','wlasl_stgcn.zip','wlasl_metadata.zip','upstream_st_gcn.py','upstream_graph_utils.py','upstream_pose_transforms.py']:
         assert sha(HERE/name)==manifest[name],name
-    cases=json.loads((HERE/'inputs.json').read_text())
+    cases=_local_json_loads((HERE/'inputs.json').read_text())
     old=[c['phrase'] for c in cases];assert len(old)==len(set(old))==30
     db=ROOT/'SLclean.sqlite3';clips=audit.pipeline.discover_clips(db)
     available=sorted(Path(name).stem for name in clips)
@@ -58,18 +65,18 @@ def metrics(rows,labels):
         precision=100*float(np.mean(ps)),recall=100*float(np.mean(rs)),f1=100*float(np.mean(fs)))
 
 def run():
-    prov=json.loads((OUT/'provenance.json').read_text())
+    prov=_local_json_loads((OUT/'provenance.json').read_text())
     for name,h in prov['hashes'].items():assert sha(HERE/name)==h,'Audit dependency changed: '+name
-    cases=json.loads((OUT/'inputs.json').read_text());old_cases=json.loads((HERE/'inputs.json').read_text())
+    cases=_local_json_loads((OUT/'inputs.json').read_text());old_cases=_local_json_loads((HERE/'inputs.json').read_text())
     assert cases[:30]==old_cases
-    captures=json.loads((OUT/'rendered.json').read_text())
+    captures=_local_json_loads((OUT/'rendered.json').read_text())
     assert len(captures)==60
-    assert captures[:30]==json.loads((HERE/'rendered.json').read_text()),'Original renderer changed'
+    assert captures[:30]==_local_json_loads((HERE/'rendered.json').read_text()),'Original renderer changed'
     audit.run(OUT)
-    results=json.loads((OUT/'results.json').read_text());pred=results['predictions']
+    results=_local_json_loads((OUT/'results.json').read_text());pred=results['predictions']
     assert len(pred)==420
     assert results['labels_evaluated']==prov['original_words']+prov['added_words']
-    old=json.loads((HERE/'results.json').read_text())
+    old=_local_json_loads((HERE/'results.json').read_text())
     lookup={(p['label'],p['variant']):p for p in pred}
     for p in old['predictions']:
         q=lookup[p['label'],p['variant']]

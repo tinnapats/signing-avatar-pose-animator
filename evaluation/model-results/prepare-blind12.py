@@ -1,8 +1,15 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,hashlib,shutil
 from pathlib import Path
 from PIL import Image,ImageDraw
 D=Path(__file__).resolve().parent;S=D/'hand-reference60-20261014';O=D/'hand-blind12-20261014'
-read=lambda p:json.loads(p.read_text(encoding='utf-8'))
+read=lambda p:_local_json_loads(p.read_text(encoding='utf-8'))
 samples=read(S/'manifest.json')['samples'];draft=read(S/'assistant-draft.json')['records'];pairs=list(zip(samples,draft))
 targets=['unclear']*2+['overlap']*4+['bent']*6
 def select(i,used,chosen):

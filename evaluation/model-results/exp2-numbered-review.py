@@ -1,9 +1,16 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 from pathlib import Path
 import numpy as np
 from PIL import Image,ImageDraw,ImageFont
 D=Path(__file__).resolve().parent;B=D/'oracle200-20261011';O=D/'exp2-recovery-20261013';O.mkdir(exist_ok=True)
-manifest={x['id']:x for x in json.loads((B/'capture_manifest.json').read_text())};samples=[('001',0,1),('001',36,1),('002',46,0),('006',37,1),('014',37,0),('015',44,0)]
+manifest={x['id']:x for x in _local_json_loads((B/'capture_manifest.json').read_text())};samples=[('001',0,1),('001',36,1),('002',46,0),('006',37,1),('014',37,0),('015',44,0)]
 board=Image.new('RGB',(1800,1280),'white');d=ImageDraw.Draw(board);font=ImageFont.truetype('C:/Windows/Fonts/arial.ttf',19)
 for n,(cid,i,side) in enumerate(samples):
  z=np.load(B/'rtm'/(cid+'.npz'));q=z['rtmw_det'][i,91+21*side:112+21*side];w=z['rtmw_det'][i,9+side];e=z['rtmw_det'][i,7+side];im=Image.open(B/'frames'/cid/manifest[cid]['frames'][i]['file']).convert('RGBA');bg=Image.new('RGBA',im.size,'white');bg.alpha_composite(im);im=bg.convert('RGB');x=(n%3)*600;y=(n//3)*640;board.paste(im.resize((200,200)),(x,y+35))

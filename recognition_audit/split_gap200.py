@@ -1,4 +1,11 @@
 """Isolated repair/taper factorial follow-up; never modify production files."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json
 import math
 from contextlib import ExitStack
@@ -12,12 +19,12 @@ VARIANTS = ['no_repair', 'no_taper']
 
 def main():
     assert not (OUT/'results.json').exists(), 'Refuse to overwrite finished experiment'
-    previous = json.loads((prior.OUT/'results.json').read_text())
-    old_protocol = json.loads((prior.OUT/'protocol.json').read_text())
+    previous = _local_json_loads((prior.OUT/'results.json').read_text())
+    old_protocol = _local_json_loads((prior.OUT/'protocol.json').read_text())
     before = prior.production()
     assert before == old_protocol['production_before']
     assert prior.sha(prior.SOURCE/'inputs.json') == old_protocol['source_inputs_hash']
-    cases = json.loads((prior.SOURCE/'inputs.json').read_text())
+    cases = _local_json_loads((prior.SOURCE/'inputs.json').read_text())
     labels = [c['phrase'] for c in cases]
     assert labels == old_protocol['labels'] and len(labels) == 200
     protocol = dict(labels=labels, variants=VARIANTS, production=before,
@@ -27,7 +34,7 @@ def main():
         fps=30, note='Known development200. Reuse baseline/both-off from prior; fresh two single-off conditions. Before renderer, no retraining.')
     OUT.mkdir(exist_ok=True)
     if (OUT/'protocol.json').exists():
-        assert json.loads((OUT/'protocol.json').read_text()) == protocol
+        assert _local_json_loads((OUT/'protocol.json').read_text()) == protocol
     else:
         (OUT/'protocol.json').write_text(json.dumps(protocol,indent=2),encoding='utf-8')
     network, normalize, vocabulary = prior.audit.load_model()
@@ -43,7 +50,7 @@ def main():
     baseline = {r['label']:r for r in previous['predictions'] if r['variant']=='baseline'}
     rows=[];completed=0
     if (OUT/'progress.json').exists():
-        saved=json.loads((OUT/'progress.json').read_text());rows=saved['predictions'];completed=saved['completed']
+        saved=_local_json_loads((OUT/'progress.json').read_text());rows=saved['predictions'];completed=saved['completed']
         assert len(rows)==completed*2
         for i,r in enumerate(rows):
             assert r['label']==labels[i//2] and r['variant']==VARIANTS[i%2]

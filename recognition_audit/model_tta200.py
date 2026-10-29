@@ -1,4 +1,11 @@
 """Fixed training-augmentation-scale five-view averaging; development only."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,math
 from pathlib import Path
 import torch
@@ -7,7 +14,7 @@ from equal_duration_trial import arrays
 from repeat_original30 import production,sha
 from extend_original60 import metrics
 HERE=Path(__file__).resolve().parent;SRC=HERE/'slgcn200_20261002';OUT=HERE/'model_tta200_20261005'
-def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def read(p):return _local_json_loads(p.read_text(encoding='utf-8'))
 def write(p,x):p.write_text(json.dumps(x,ensure_ascii=False,indent=2),encoding='utf-8')
 def main():
     assert not OUT.exists();before=production();OUT.mkdir()

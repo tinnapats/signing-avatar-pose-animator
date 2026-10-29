@@ -1,7 +1,14 @@
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 from pathlib import Path
 import json,numpy as np,cv2
 B=Path('C:/Users/newtu/signing-avatar-github-newton-upload/recognition_audit/pixels30_20261007');O=B/'upper_crop_20261008';cid='001';i=45
-meta=json.loads((O/(cid+'.json')).read_text());scale=meta['scale'];origin=np.array(meta['origin']);mat=np.array([[scale,0,-origin[0]*scale],[0,scale,-origin[1]*scale]],np.float32)
+meta=_local_json_loads((O/(cid+'.json')).read_text());scale=meta['scale'];origin=np.array(meta['origin']);mat=np.array([[scale,0,-origin[0]*scale],[0,scale,-origin[1]*scale]],np.float32)
 im=cv2.imread(str(B/'frames'/cid/f'{i:04d}.png'),cv2.IMREAD_UNCHANGED);a=im[:,:,3:4]/255;im=np.uint8(np.rint(im[:,:,:3]*a+255*(1-a)));crop=cv2.warpAffine(im,mat,(808,808),borderMode=cv2.BORDER_CONSTANT,borderValue=(255,255,255));points=np.load(O/(cid+'.npz'))['crop_raw'][i]
 for off in [33,54]:
  if np.any(points[off:off+21]):

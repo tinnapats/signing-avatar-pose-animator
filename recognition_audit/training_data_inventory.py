@@ -1,13 +1,20 @@
 """Read-only dataset inventory and split feasibility; no training/download."""
+
+# Relocate historical paths in memory; keep original JSON evidence unchanged.
+import sys as _path_sys
+from pathlib import Path as _Path
+_project = next(p for p in _Path(__file__).resolve().parents if (p / "portable_paths.py").is_file())
+_path_sys.path.insert(0, str(_project))
+from portable_paths import loads as _local_json_loads
 import json,zipfile,collections
 from pathlib import Path
 import sqlite3
 HERE=Path(__file__).resolve().parent;OUT=HERE/'training_data_inventory_20261005'
-def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def read(p):return _local_json_loads(p.read_text(encoding='utf-8'))
 def main():
     assert not OUT.exists();OUT.mkdir()
     kaggle=read(HERE/'kaggle_reference/WLASL_v0.3.json')
-    released=json.loads(zipfile.ZipFile(HERE/'wlasl_metadata.zip').read('splits/asl2000.json'))
+    released=_local_json_loads(zipfile.ZipFile(HERE/'wlasl_metadata.zip').read('splits/asl2000.json'))
     pairs={(r['gloss'],str(i['video_id'])):i for r in released for i in r['instances']}
     labels=read(HERE/'slgcn200_20261002/protocol.json')['labels'];assert len(labels)==200
     rows=[];candidates={};disagreements=[]
